@@ -10,6 +10,9 @@ import { useAuth } from '@/contexts/AuthContext';
 const DashboardPage: React.FC = () => {
   const { user } = useAuth();
   
+  // Access user_metadata.name or fallback to email or generic "User"
+  const userName = user?.user_metadata?.name || (user?.email ? user.email.split('@')[0] : 'User');
+  
   const dashboardCards = [
     {
       title: 'Messages',
@@ -77,7 +80,7 @@ const DashboardPage: React.FC = () => {
     <div className="container mx-auto py-8 px-4">
       <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
         <div>
-          <h1 className="text-3xl font-bold">Welcome back, {user?.name}</h1>
+          <h1 className="text-3xl font-bold">Welcome back, {userName}</h1>
           <p className="text-muted-foreground">
             Your digital legacy vault is secure and ready for your messages.
           </p>

@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -103,7 +102,6 @@ const MessagesPage: React.FC = () => {
     },
   });
 
-  // Query messages
   const { data: messages, isLoading } = useQuery({
     queryKey: ['messages', user?.id],
     queryFn: async () => {
@@ -120,7 +118,6 @@ const MessagesPage: React.FC = () => {
     enabled: !!user,
   });
 
-  // Query trusted contacts for recipients
   const { data: trustedContacts } = useQuery({
     queryKey: ['trustedContacts', user?.id],
     queryFn: async () => {
@@ -137,7 +134,6 @@ const MessagesPage: React.FC = () => {
     enabled: !!user,
   });
 
-  // Add message mutation
   const addMessageMutation = useMutation({
     mutationFn: async (data: z.infer<typeof formSchema>) => {
       if (!user) throw new Error('Not authenticated');
@@ -146,7 +142,12 @@ const MessagesPage: React.FC = () => {
         .from('messages')
         .insert({
           user_id: user.id,
-          ...data,
+          recipient_email: data.recipient_email,
+          subject: data.subject,
+          content: data.content,
+          delivery_date: data.delivery_date,
+          trigger_condition: data.trigger_condition,
+          message_type: data.message_type,
           is_delivered: false,
         });
         
@@ -170,7 +171,6 @@ const MessagesPage: React.FC = () => {
     },
   });
 
-  // Update message mutation
   const updateMessageMutation = useMutation({
     mutationFn: async (data: z.infer<typeof formSchema> & { id: string }) => {
       if (!user) throw new Error('Not authenticated');
@@ -178,7 +178,14 @@ const MessagesPage: React.FC = () => {
       const { id, ...messageData } = data;
       const { error } = await supabase
         .from('messages')
-        .update(messageData)
+        .update({
+          recipient_email: messageData.recipient_email,
+          subject: messageData.subject,
+          content: messageData.content,
+          delivery_date: messageData.delivery_date,
+          trigger_condition: messageData.trigger_condition,
+          message_type: messageData.message_type,
+        })
         .eq('id', id);
         
       if (error) throw error;
@@ -202,7 +209,6 @@ const MessagesPage: React.FC = () => {
     },
   });
 
-  // Delete message mutation
   const deleteMessageMutation = useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase
@@ -228,7 +234,6 @@ const MessagesPage: React.FC = () => {
     },
   });
 
-  // Reset form when editing message changes
   React.useEffect(() => {
     if (editingMessage) {
       form.reset({
@@ -425,7 +430,6 @@ const MessagesPage: React.FC = () => {
         </div>
       )}
 
-      {/* Create/Edit Message Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="sm:max-w-[600px]">
           <DialogHeader>
@@ -579,7 +583,6 @@ const MessagesPage: React.FC = () => {
         </DialogContent>
       </Dialog>
 
-      {/* View Message Dialog */}
       <Dialog open={!!viewingMessage} onOpenChange={(open) => !open && setViewingMessage(null)}>
         <DialogContent className="sm:max-w-[600px]">
           <DialogHeader>

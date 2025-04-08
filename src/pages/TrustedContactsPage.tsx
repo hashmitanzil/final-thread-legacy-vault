@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -78,7 +77,6 @@ const TrustedContactsPage: React.FC = () => {
     },
   });
 
-  // Query trusted contacts
   const { data: contacts, isLoading } = useQuery({
     queryKey: ['trustedContacts', user?.id],
     queryFn: async () => {
@@ -95,7 +93,6 @@ const TrustedContactsPage: React.FC = () => {
     enabled: !!user,
   });
 
-  // Add trusted contact mutation
   const addContactMutation = useMutation({
     mutationFn: async (data: z.infer<typeof formSchema>) => {
       if (!user) throw new Error('Not authenticated');
@@ -104,7 +101,10 @@ const TrustedContactsPage: React.FC = () => {
         .from('trusted_contacts')
         .insert({
           user_id: user.id,
-          ...data
+          name: data.name,
+          email: data.email,
+          phone: data.phone || null,
+          relationship: data.relationship || null
         });
         
       if (error) throw error;
@@ -127,7 +127,6 @@ const TrustedContactsPage: React.FC = () => {
     },
   });
 
-  // Update trusted contact mutation
   const updateContactMutation = useMutation({
     mutationFn: async (data: z.infer<typeof formSchema> & { id: string }) => {
       if (!user) throw new Error('Not authenticated');
@@ -135,7 +134,12 @@ const TrustedContactsPage: React.FC = () => {
       const { id, ...contactData } = data;
       const { error } = await supabase
         .from('trusted_contacts')
-        .update(contactData)
+        .update({
+          name: contactData.name,
+          email: contactData.email,
+          phone: contactData.phone || null,
+          relationship: contactData.relationship || null
+        })
         .eq('id', id);
         
       if (error) throw error;
@@ -159,7 +163,6 @@ const TrustedContactsPage: React.FC = () => {
     },
   });
 
-  // Delete trusted contact mutation
   const deleteContactMutation = useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase
@@ -185,7 +188,6 @@ const TrustedContactsPage: React.FC = () => {
     },
   });
 
-  // Reset form when editing contact changes
   useEffect(() => {
     if (editingContact) {
       form.reset({
@@ -337,7 +339,6 @@ const TrustedContactsPage: React.FC = () => {
         </div>
       )}
 
-      {/* Add/Edit Contact Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
