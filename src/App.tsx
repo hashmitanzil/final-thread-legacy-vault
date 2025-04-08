@@ -12,6 +12,9 @@ import ProtectedRoute from "@/components/ProtectedRoute";
 
 // Pages
 import HomePage from "./pages/HomePage";
+import AboutPage from "./pages/AboutPage";
+import FeaturesPage from "./pages/FeaturesPage";
+import PricingPage from "./pages/PricingPage";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import DashboardPage from "./pages/DashboardPage";
@@ -70,6 +73,30 @@ const App = () => (
                 element={
                   <MotionLayout>
                     <HomePage />
+                  </MotionLayout>
+                } 
+              />
+              <Route 
+                path="/about" 
+                element={
+                  <MotionLayout>
+                    <AboutPage />
+                  </MotionLayout>
+                } 
+              />
+              <Route 
+                path="/features" 
+                element={
+                  <MotionLayout>
+                    <FeaturesPage />
+                  </MotionLayout>
+                } 
+              />
+              <Route 
+                path="/pricing" 
+                element={
+                  <MotionLayout>
+                    <PricingPage />
                   </MotionLayout>
                 } 
               />
