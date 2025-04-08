@@ -1,29 +1,24 @@
 
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from '@/components/ui/use-toast';
 import { Button } from '@/components/ui/button';
-import {
-  Form,
-  FormControl,
-  FormDescription,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { 
-  Card, 
-  CardContent, 
-  CardDescription, 
-  CardFooter, 
-  CardHeader, 
-  CardTitle 
+import { Label } from '@/components/ui/label';
+import { Separator } from '@/components/ui/separator';
+import { Checkbox } from '@/components/ui/checkbox';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
 } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -35,417 +30,511 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import { Switch } from '@/components/ui/switch';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { useToast } from '@/components/ui/use-toast';
-import { useAuth } from '@/contexts/AuthContext';
-import { 
-  Settings, 
-  Bell, 
-  Shield, 
-  Key, 
-  Lock, 
-  LogOut, 
-  User, 
-  Trash2,
-  Upload,
-  Calendar, 
-  Clock
-} from 'lucide-react';
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form';
+import { useQuery } from '@tanstack/react-query';
+import { UserCircle, Lock, Shield, Calendar, BellRing } from 'lucide-react';
 
 const profileFormSchema = z.object({
-  name: z.string().min(2, { message: 'Name must be at least 2 characters' }),
-  email: z.string().email({ message: 'Please enter a valid email address' }),
-  phone: z.string().optional(),
+  full_name: z.string().min(2, 'Name must be at least 2 characters').max(50),
+  email: z.string().email('Invalid email address'),
 });
 
-type ProfileFormValues = z.infer<typeof profileFormSchema>;
+const passwordFormSchema = z.object({
+  current_password: z.string().min(1, 'Current password is required'),
+  new_password: z.string().min(8, 'Password must be at least 8 characters'),
+  confirm_password: z.string().min(8, 'Password must be at least 8 characters'),
+}).refine(data => data.new_password === data.confirm_password, {
+  message: "Passwords don't match",
+  path: ['confirm_password'],
+});
 
 const AccountSettingsPage: React.FC = () => {
-  const { user, logout } = useAuth();
-  const { toast } = useToast();
-  const navigate = useNavigate();
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [accountDeleteOpen, setAccountDeleteOpen] = useState(false);
+  const { user, logout, deleteAccount, updateProfile } = useAuth();
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [confirmDeleteText, setConfirmDeleteText] = useState('');
   
-  const defaultValues: Partial<ProfileFormValues> = {
-    name: user?.name || '',
-    email: user?.email || '',
-    phone: '',
-  };
-
-  const form = useForm<ProfileFormValues>({
+  const profileForm = useForm<z.infer<typeof profileFormSchema>>({
     resolver: zodResolver(profileFormSchema),
-    defaultValues,
+    defaultValues: {
+      full_name: '',
+      email: user?.email || '',
+    },
   });
 
-  const onSubmit = async (data: ProfileFormValues) => {
-    try {
-      setIsSubmitting(true);
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+  const passwordForm = useForm<z.infer<typeof passwordFormSchema>>({
+    resolver: zodResolver(passwordFormSchema),
+    defaultValues: {
+      current_password: '',
+      new_password: '',
+      confirm_password: '',
+    },
+  });
+
+  // Fetch user profile
+  const { data: profile, isLoading: isLoadingProfile } = useQuery({
+    queryKey: ['profile', user?.id],
+    queryFn: async () => {
+      if (!user) return null;
       
-      toast({
-        title: 'Profile updated',
-        description: 'Your profile information has been updated successfully.',
-      });
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+        
+      if (error) throw error;
+      
+      // Set form defaults with current values
+      profileForm.setValue('full_name', data.full_name || '');
+      
+      return data;
+    },
+    enabled: !!user,
+  });
+
+  // Query login activity
+  const { data: loginActivity, isLoading: isLoadingActivity } = useQuery({
+    queryKey: ['loginActivity', user?.id],
+    queryFn: async () => {
+      if (!user) return null;
+      
+      const { data, error } = await supabase
+        .from('login_activity')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('login_time', { ascending: false })
+        .limit(1)
+        .single();
+        
+      if (error && error.code !== 'PGRST116') {
+        throw error;
+      }
+      
+      return data || null;
+    },
+    enabled: !!user,
+  });
+
+  const onSubmitProfile = async (data: z.infer<typeof profileFormSchema>) => {
+    try {
+      setIsUpdating(true);
+      
+      // Only update profile if full_name changed
+      if (data.full_name !== profile?.full_name) {
+        await updateProfile({ full_name: data.full_name });
+      }
+      
+      // Email update requires special auth handling
+      if (data.email !== user?.email) {
+        const { error } = await supabase.auth.updateUser({ email: data.email });
+        if (error) throw error;
+        
+        toast({
+          title: 'Email update initiated',
+          description: 'Please check your new email address to confirm the change.',
+        });
+      }
+      
     } catch (error) {
       toast({
         title: 'Update failed',
-        description: 'There was an error updating your profile.',
+        description: error instanceof Error ? error.message : 'Failed to update profile',
         variant: 'destructive',
       });
     } finally {
-      setIsSubmitting(false);
+      setIsUpdating(false);
+    }
+  };
+
+  const onSubmitPassword = async (data: z.infer<typeof passwordFormSchema>) => {
+    try {
+      setIsChangingPassword(true);
+      
+      // First verify current password
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: user?.email || '',
+        password: data.current_password,
+      });
+      
+      if (signInError) {
+        throw new Error('Current password is incorrect');
+      }
+      
+      // Then update password
+      const { error } = await supabase.auth.updateUser({
+        password: data.new_password,
+      });
+      
+      if (error) throw error;
+      
+      toast({
+        title: 'Password updated',
+        description: 'Your password has been successfully changed.',
+      });
+      
+      passwordForm.reset();
+      
+    } catch (error) {
+      toast({
+        title: 'Password change failed',
+        description: error instanceof Error ? error.message : 'Failed to update password',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsChangingPassword(false);
     }
   };
 
   const handleDeleteAccount = async () => {
-    try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
+    if (confirmDeleteText !== 'DELETE') {
       toast({
-        title: 'Account scheduled for deletion',
-        description: 'Your account will be permanently deleted in 15 days. You can cancel this by logging back in.',
+        title: 'Confirmation failed',
+        description: 'Please type DELETE to confirm account deletion',
+        variant: 'destructive',
       });
-      
-      logout();
-      navigate('/');
+      return;
+    }
+    
+    try {
+      await deleteAccount();
     } catch (error) {
       toast({
         title: 'Error',
-        description: 'There was an error processing your request.',
+        description: error instanceof Error ? error.message : 'Failed to schedule account deletion',
         variant: 'destructive',
       });
     }
   };
 
-  const handleLogout = () => {
-    logout();
-    navigate('/');
+  // Format date as Month day, year
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
+      month: 'long',
+      day: 'numeric',
+      year: 'numeric'
+    });
   };
+
+  if (!user) {
+    return (
+      <div className="flex justify-center items-center min-h-[60vh]">
+        <p>Please log in to access account settings.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto py-8 px-4">
-      <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
-        <div>
-          <h1 className="text-3xl font-bold">Account Settings</h1>
-          <p className="text-muted-foreground">
-            Manage your profile, security, and notification preferences
-          </p>
-        </div>
-      </div>
+      <h1 className="text-3xl font-bold mb-8">Account Settings</h1>
 
-      <Tabs defaultValue="profile" className="space-y-6">
-        <TabsList className="grid grid-cols-1 md:grid-cols-4 gap-2">
-          <TabsTrigger value="profile" className="flex items-center gap-2">
-            <User className="h-4 w-4" />
-            <span>Profile</span>
-          </TabsTrigger>
-          <TabsTrigger value="security" className="flex items-center gap-2">
-            <Shield className="h-4 w-4" />
-            <span>Security</span>
-          </TabsTrigger>
-          <TabsTrigger value="notifications" className="flex items-center gap-2">
-            <Bell className="h-4 w-4" />
-            <span>Notifications</span>
-          </TabsTrigger>
-          <TabsTrigger value="danger" className="flex items-center gap-2">
-            <Trash2 className="h-4 w-4" />
-            <span>Danger Zone</span>
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="profile">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="lg:col-span-2 space-y-6">
+          {/* Profile Information */}
           <Card>
             <CardHeader>
-              <CardTitle>Profile Information</CardTitle>
+              <CardTitle className="flex items-center gap-2">
+                <UserCircle className="h-5 w-5" />
+                Profile Information
+              </CardTitle>
               <CardDescription>
-                Update your profile details and personal information
+                Update your account profile details
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-8">
-              <div className="flex flex-col items-center justify-center gap-4 sm:flex-row sm:items-start sm:justify-start">
-                <Avatar className="h-20 w-20">
-                  <AvatarImage src={user?.avatar} alt={user?.name} />
-                  <AvatarFallback>{user?.name?.substring(0, 2).toUpperCase()}</AvatarFallback>
-                </Avatar>
-                <div className="flex flex-col items-center gap-2 sm:items-start">
-                  <h3 className="text-lg font-medium">{user?.name}</h3>
-                  <p className="text-sm text-muted-foreground">{user?.email}</p>
-                  <Button variant="outline" size="sm" className="flex items-center gap-2">
-                    <Upload className="h-4 w-4" />
-                    Change Avatar
-                  </Button>
-                </div>
-              </div>
-
-              <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            <CardContent>
+              <Form {...profileForm}>
+                <form onSubmit={profileForm.handleSubmit(onSubmitProfile)} className="space-y-4">
                   <FormField
-                    control={form.control}
-                    name="name"
+                    control={profileForm.control}
+                    name="full_name"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Full Name</FormLabel>
                         <FormControl>
-                          <Input placeholder="Your name" {...field} />
+                          <Input placeholder="Your full name" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
                   <FormField
-                    control={form.control}
+                    control={profileForm.control}
                     name="email"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Email</FormLabel>
+                        <FormLabel>Email Address</FormLabel>
                         <FormControl>
-                          <Input placeholder="your@email.com" {...field} />
+                          <Input type="email" placeholder="Your email" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
-                  <FormField
-                    control={form.control}
-                    name="phone"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Phone Number (Optional)</FormLabel>
-                        <FormControl>
-                          <Input placeholder="(555) 123-4567" {...field} />
-                        </FormControl>
-                        <FormDescription>
-                          For recovery and trusted contact verification purposes
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <Button type="submit" disabled={isSubmitting}>
-                    {isSubmitting ? 'Saving...' : 'Save Changes'}
+                  <Button type="submit" disabled={isUpdating}>
+                    {isUpdating ? 'Updating...' : 'Update Profile'}
                   </Button>
                 </form>
               </Form>
             </CardContent>
           </Card>
-        </TabsContent>
 
-        <TabsContent value="security">
+          {/* Password Change */}
           <Card>
             <CardHeader>
-              <CardTitle>Security Settings</CardTitle>
+              <CardTitle className="flex items-center gap-2">
+                <Lock className="h-5 w-5" />
+                Change Password
+              </CardTitle>
               <CardDescription>
-                Manage your password and security preferences
+                Update your account password
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-6">
+            <CardContent>
+              <Form {...passwordForm}>
+                <form onSubmit={passwordForm.handleSubmit(onSubmitPassword)} className="space-y-4">
+                  <FormField
+                    control={passwordForm.control}
+                    name="current_password"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Current Password</FormLabel>
+                        <FormControl>
+                          <Input type="password" placeholder="Your current password" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={passwordForm.control}
+                    name="new_password"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>New Password</FormLabel>
+                        <FormControl>
+                          <Input type="password" placeholder="Your new password" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={passwordForm.control}
+                    name="confirm_password"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Confirm New Password</FormLabel>
+                        <FormControl>
+                          <Input type="password" placeholder="Confirm new password" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <Button type="submit" disabled={isChangingPassword}>
+                    {isChangingPassword ? 'Changing...' : 'Change Password'}
+                  </Button>
+                </form>
+              </Form>
+            </CardContent>
+          </Card>
+
+          {/* Notification Settings */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <BellRing className="h-5 w-5" />
+                Notification Settings
+              </CardTitle>
+              <CardDescription>
+                Manage how and when you receive notifications
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
               <div className="space-y-4">
-                <h3 className="text-lg font-medium">Password</h3>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium">Change Password</p>
-                    <p className="text-sm text-muted-foreground">
-                      Update your password regularly to keep your account secure
-                    </p>
-                  </div>
-                  <Button variant="outline">
-                    <Key className="h-4 w-4 mr-2" />
-                    Update Password
-                  </Button>
+                <div className="flex items-center space-x-2">
+                  <Checkbox id="email-notifications" defaultChecked />
+                  <Label htmlFor="email-notifications">Receive email notifications</Label>
                 </div>
-              </div>
-              
-              <div className="space-y-4 pt-6 border-t">
-                <h3 className="text-lg font-medium">Two-Factor Authentication</h3>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium">Enable 2FA</p>
-                    <p className="text-sm text-muted-foreground">
-                      Add an extra layer of security to your account
-                    </p>
-                  </div>
-                  <Switch />
+                <div className="flex items-center space-x-2">
+                  <Checkbox id="login-alerts" defaultChecked />
+                  <Label htmlFor="login-alerts">Send alerts for new logins</Label>
                 </div>
-              </div>
-              
-              <div className="space-y-4 pt-6 border-t">
-                <h3 className="text-lg font-medium">Activity Log</h3>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium">Login History</p>
-                    <p className="text-sm text-muted-foreground">
-                      View your recent login activities
-                    </p>
-                  </div>
-                  <Button variant="outline">
-                    <Clock className="h-4 w-4 mr-2" />
-                    View Log
-                  </Button>
+                <div className="flex items-center space-x-2">
+                  <Checkbox id="inactivity-warnings" defaultChecked />
+                  <Label htmlFor="inactivity-warnings">
+                    Send warnings before inactivity triggers
+                  </Label>
                 </div>
-              </div>
-              
-              <div className="space-y-4 pt-6 border-t">
-                <h3 className="text-lg font-medium">Last Login Proof</h3>
-                <div>
-                  <p className="text-sm text-muted-foreground">
-                    You must log in at least once every 30 days to indicate you're still alive.
-                    If you don't log in, your trusted contacts will be notified.
-                  </p>
-                  <div className="mt-2 p-3 bg-muted rounded-md flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Calendar className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm font-medium">Last login: Today</span>
-                    </div>
-                    <div className="text-sm text-green-600 font-medium">Active</div>
-                  </div>
-                  <p className="text-sm text-muted-foreground mt-2">
-                    Next required login: <span className="font-medium">May 8, 2025</span>
-                  </p>
-                </div>
+                <Button variant="outline">Save Preferences</Button>
               </div>
             </CardContent>
           </Card>
-        </TabsContent>
 
-        <TabsContent value="notifications">
-          <Card>
-            <CardHeader>
-              <CardTitle>Notification Settings</CardTitle>
-              <CardDescription>
-                Control how and when you receive notifications
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="space-y-4">
-                <h3 className="text-lg font-medium">Email Notifications</h3>
-                
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium">Login Alerts</p>
-                    <p className="text-sm text-muted-foreground">
-                      Receive an email when someone logs into your account
-                    </p>
-                  </div>
-                  <Switch defaultChecked />
-                </div>
-                
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium">Trusted Contact Updates</p>
-                    <p className="text-sm text-muted-foreground">
-                      Get notified when a trusted contact accepts or declines
-                    </p>
-                  </div>
-                  <Switch defaultChecked />
-                </div>
-                
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium">Login Reminders</p>
-                    <p className="text-sm text-muted-foreground">
-                      Receive reminders to log in before the 30-day period ends
-                    </p>
-                  </div>
-                  <Switch defaultChecked />
-                </div>
-              </div>
-              
-              <div className="space-y-4 pt-6 border-t">
-                <h3 className="text-lg font-medium">System Notifications</h3>
-                
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium">Security Alerts</p>
-                    <p className="text-sm text-muted-foreground">
-                      Important security notifications and warnings
-                    </p>
-                  </div>
-                  <Switch defaultChecked />
-                </div>
-                
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium">New Features</p>
-                    <p className="text-sm text-muted-foreground">
-                      Updates about new features and improvements
-                    </p>
-                  </div>
-                  <Switch />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="danger">
-          <Card>
+          {/* Danger Zone */}
+          <Card className="border-red-200 bg-red-50">
             <CardHeader>
               <CardTitle className="text-red-600">Danger Zone</CardTitle>
               <CardDescription>
-                Actions that will delete your data or remove your account
+                Actions here can permanently affect your account
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="space-y-4">
-                <h3 className="text-lg font-medium">Log out of all devices</h3>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium">End all active sessions</p>
-                    <p className="text-sm text-muted-foreground">
-                      This will sign you out from all devices except the current one
-                    </p>
-                  </div>
-                  <Button variant="outline">
-                    <LogOut className="h-4 w-4 mr-2" />
-                    Sign Out All Devices
-                  </Button>
-                </div>
+            <CardContent className="space-y-4">
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="destructive">Delete Account</Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      <p className="mb-4">
+                        This will schedule your account for deletion after 15 days. 
+                        After this period, all your data will be permanently removed.
+                      </p>
+                      <p className="mb-4">
+                        You can cancel this process by logging in again during the 15-day period.
+                      </p>
+                      <div className="mt-4">
+                        <Label htmlFor="confirm-delete" className="text-sm font-medium">
+                          To confirm, type DELETE below:
+                        </Label>
+                        <Input 
+                          id="confirm-delete"
+                          value={confirmDeleteText}
+                          onChange={(e) => setConfirmDeleteText(e.target.value)}
+                          className="mt-2"
+                        />
+                      </div>
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel onClick={() => setConfirmDeleteText('')}>
+                      Cancel
+                    </AlertDialogCancel>
+                    <AlertDialogAction 
+                      onClick={handleDeleteAccount}
+                      className="bg-red-600 hover:bg-red-700"
+                    >
+                      Delete Account
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="space-y-6">
+          {/* Account Summary */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Account Summary</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-1">
+                <Label className="text-muted-foreground">Email</Label>
+                <p>{user.email}</p>
               </div>
-              
-              <div className="space-y-4 pt-6 border-t">
-                <h3 className="text-lg font-medium text-red-600">Delete Account</h3>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium">Delete your Final Thread account</p>
-                    <p className="text-sm text-muted-foreground">
-                      Your account will be scheduled for deletion. All data will be permanently 
-                      removed after 15 days, and this action cannot be undone.
-                    </p>
-                  </div>
-                  <AlertDialog open={accountDeleteOpen} onOpenChange={setAccountDeleteOpen}>
-                    <AlertDialogTrigger asChild>
-                      <Button variant="destructive">
-                        <Trash2 className="h-4 w-4 mr-2" />
-                        Delete Account
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          This will schedule your account for deletion. All your data, including messages, 
-                          digital assets, and trusted contacts will be permanently removed after 15 days. 
-                          This action cannot be undone.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleDeleteAccount} className="bg-red-600 hover:bg-red-700">
-                          Yes, delete my account
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
-                </div>
+              <div className="space-y-1">
+                <Label className="text-muted-foreground">Account Created</Label>
+                <p>{profile?.created_at ? formatDate(profile.created_at) : 'Loading...'}</p>
+              </div>
+              <Separator className="my-4" />
+              <div className="space-y-1">
+                <Label className="text-muted-foreground">Last Login</Label>
+                <p>{loginActivity?.login_time ? formatDate(loginActivity.login_time) : 'N/A'}</p>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-muted-foreground">Proof of Life Required By</Label>
+                <p className="font-semibold">
+                  {loginActivity?.next_required_login 
+                    ? formatDate(loginActivity.next_required_login) 
+                    : 'N/A'}
+                </p>
               </div>
             </CardContent>
           </Card>
-        </TabsContent>
-      </Tabs>
+
+          {/* Security Status */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Shield className="h-5 w-5" /> 
+                Security Status
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <span>Password strength</span>
+                  <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full">Strong</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span>Two-factor auth</span>
+                  <span className="bg-yellow-100 text-yellow-800 text-xs px-2 py-1 rounded-full">Not enabled</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span>Recovery email</span>
+                  <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full">Verified</span>
+                </div>
+
+                <Button variant="outline" className="w-full mt-4">
+                  <Shield className="h-4 w-4 mr-2" />
+                  Enable Two-Factor Auth
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Activity Log */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Calendar className="h-5 w-5" />
+                Recent Activity
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div>
+                  <div className="text-sm font-medium">Login</div>
+                  <div className="text-xs text-muted-foreground mt-1">
+                    {loginActivity?.login_time 
+                      ? new Date(loginActivity.login_time).toLocaleString() 
+                      : 'N/A'}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-sm font-medium">Password changed</div>
+                  <div className="text-xs text-muted-foreground mt-1">Never</div>
+                </div>
+                <div>
+                  <div className="text-sm font-medium">Profile updated</div>
+                  <div className="text-xs text-muted-foreground mt-1">
+                    {profile?.updated_at && profile.updated_at !== profile.created_at 
+                      ? new Date(profile.updated_at).toLocaleString() 
+                      : 'Never'}
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+            <CardFooter>
+              <Button variant="ghost" size="sm" className="w-full">
+                View Full Activity Log
+              </Button>
+            </CardFooter>
+          </Card>
+        </div>
+      </div>
     </div>
   );
 };

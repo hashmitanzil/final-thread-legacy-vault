@@ -1,1 +1,5 @@
+
 project_id = "uabsydymuolshbxaimex"
+
+[functions.account-deletion]
+verify_jwt = true

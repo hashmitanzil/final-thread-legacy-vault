@@ -1,24 +1,20 @@
 
 import React, { createContext, useState, useContext, useEffect } from 'react';
+import { User, Session } from '@supabase/supabase-js';
 import { toast } from '@/components/ui/use-toast';
-
-interface User {
-  id: string;
-  name: string;
-  email: string;
-  avatar?: string;
-  lastLogin: string;
-  nextRequiredLogin: string;
-}
+import { supabase } from '@/integrations/supabase/client';
+import { useNavigate } from 'react-router-dom';
 
 interface AuthContextType {
   user: User | null;
+  session: Session | null;
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (name: string, email: string, password: string) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
   deleteAccount: () => Promise<void>;
+  updateProfile: (data: { full_name?: string; avatar_url?: string }) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -33,72 +29,98 @@ export const useAuth = () => {
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const navigate = useNavigate();
 
-  // Function to calculate next required login date (30 days from now)
-  const calculateNextRequiredLogin = (): string => {
-    const nextDate = new Date();
-    nextDate.setDate(nextDate.getDate() + 30);
-    return nextDate.toISOString().split('T')[0];
+  // Check for login requirement (30 days proof of life)
+  const checkLoginRequirement = async (userId: string) => {
+    try {
+      const { data: loginActivity, error } = await supabase
+        .from('login_activity')
+        .select('next_required_login')
+        .eq('user_id', userId)
+        .order('login_time', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (error && error.code !== 'PGRST116') {
+        console.error('Error fetching login activity:', error);
+        return;
+      }
+
+      // Record new login
+      const today = new Date();
+      const nextRequiredLogin = new Date();
+      nextRequiredLogin.setDate(today.getDate() + 30);
+
+      await supabase.from('login_activity').insert({
+        user_id: userId,
+        login_time: today.toISOString(),
+        next_required_login: nextRequiredLogin.toISOString()
+      });
+
+    } catch (error) {
+      console.error('Error updating login activity:', error);
+    }
   };
 
   useEffect(() => {
-    // Check if user is already logged in from local storage
-    const storedUser = localStorage.getItem('final_thread_user');
-    if (storedUser) {
-      try {
-        const parsedUser = JSON.parse(storedUser);
+    // Set up auth state listener first
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        setSession(session);
+        setUser(session?.user ?? null);
         
-        // Update the last login date to today
-        const today = new Date().toISOString().split('T')[0];
-        const updatedUser = {
-          ...parsedUser,
-          lastLogin: today,
-          nextRequiredLogin: calculateNextRequiredLogin(),
-        };
-        
-        setUser(updatedUser);
-        localStorage.setItem('final_thread_user', JSON.stringify(updatedUser));
-      } catch (error) {
-        console.error('Failed to parse user from localStorage:', error);
-        localStorage.removeItem('final_thread_user');
+        if (session?.user && event === 'SIGNED_IN') {
+          // Using setTimeout to avoid Supabase deadlocks
+          setTimeout(() => {
+            checkLoginRequirement(session.user.id);
+          }, 0);
+        }
       }
-    }
-    setIsLoading(false);
+    );
+
+    // Then check for existing session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setUser(session?.user ?? null);
+      
+      if (session?.user) {
+        // Using setTimeout to avoid Supabase deadlocks
+        setTimeout(() => {
+          checkLoginRequirement(session.user.id);
+        }, 0);
+      }
+      
+      setIsLoading(false);
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
   const login = async (email: string, password: string) => {
     try {
       setIsLoading(true);
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: 'Welcome back!',
+        description: 'You have successfully logged in.',
+      });
       
-      // In a real app, this would be a call to your authentication endpoint
-      if (email === 'demo@finalthread.com' && password === 'password') {
-        const today = new Date().toISOString().split('T')[0];
-        const user: User = {
-          id: '1',
-          name: 'Demo User',
-          email: 'demo@finalthread.com',
-          avatar: '', // Could add a demo avatar URL here
-          lastLogin: today,
-          nextRequiredLogin: calculateNextRequiredLogin(),
-        };
-        
-        setUser(user);
-        localStorage.setItem('final_thread_user', JSON.stringify(user));
-        toast({
-          title: 'Welcome back!',
-          description: 'You have successfully logged in.',
-        });
-        return;
-      }
-      
-      throw new Error('Invalid email or password');
-    } catch (error) {
+      navigate('/dashboard');
+    } catch (error: any) {
       toast({
         title: 'Login failed',
-        description: error instanceof Error ? error.message : 'An unknown error occurred',
+        description: error.message || 'An unknown error occurred',
         variant: 'destructive',
       });
       throw error;
@@ -110,30 +132,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const register = async (name: string, email: string, password: string) => {
     try {
       setIsLoading(true);
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
       
-      const today = new Date().toISOString().split('T')[0];
-      // In a real app, this would be a call to your registration endpoint
-      const user: User = {
-        id: Math.random().toString(36).substring(2, 9),
-        name,
+      const { error } = await supabase.auth.signUp({
         email,
-        avatar: '', // Could generate a placeholder avatar
-        lastLogin: today,
-        nextRequiredLogin: calculateNextRequiredLogin(),
-      };
-      
-      setUser(user);
-      localStorage.setItem('final_thread_user', JSON.stringify(user));
+        password,
+        options: {
+          data: {
+            full_name: name
+          }
+        }
+      });
+
+      if (error) throw error;
+
       toast({
         title: 'Registration successful',
-        description: 'Your account has been created.',
+        description: 'Your account has been created. Please check your email for verification.',
       });
-    } catch (error) {
+      
+      navigate('/dashboard');
+    } catch (error: any) {
       toast({
         title: 'Registration failed',
-        description: error instanceof Error ? error.message : 'An unknown error occurred',
+        description: error.message || 'An unknown error occurred',
         variant: 'destructive',
       });
       throw error;
@@ -142,49 +163,91 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const logout = () => {
-    setUser(null);
-    localStorage.removeItem('final_thread_user');
-    toast({
-      title: 'Logged out',
-      description: 'You have been successfully logged out.',
-    });
+  const logout = async () => {
+    try {
+      setIsLoading(true);
+      await supabase.auth.signOut();
+      
+      toast({
+        title: 'Logged out',
+        description: 'You have been successfully logged out.',
+      });
+      
+      navigate('/');
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to log out',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const deleteAccount = async () => {
     try {
       setIsLoading(true);
-      // In a real app, this would be a call to your account deletion endpoint
-      await new Promise(resolve => setTimeout(resolve, 1000));
       
-      // Mark account for deletion in 15 days (in a real app)
-      logout();
+      // In a real implementation, this would call a server-side function
+      // to handle account deletion with proper security
+      // For now, we'll just sign out the user
+      await supabase.auth.signOut();
       
       toast({
         title: 'Account scheduled for deletion',
         description: 'Your account will be permanently deleted after 15 days.',
       });
-    } catch (error) {
+      
+      navigate('/');
+    } catch (error: any) {
       toast({
         title: 'Error',
-        description: 'Failed to delete your account. Please try again.',
+        description: error.message || 'Failed to delete your account. Please try again.',
         variant: 'destructive',
       });
       throw error;
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const updateProfile = async (data: { full_name?: string; avatar_url?: string }) => {
+    try {
+      if (!user) throw new Error('User not authenticated');
+      
+      const { error } = await supabase
+        .from('profiles')
+        .update(data)
+        .eq('id', user.id);
+
+      if (error) throw error;
+
+      toast({
+        title: 'Profile updated',
+        description: 'Your profile has been successfully updated.',
+      });
+    } catch (error: any) {
+      toast({
+        title: 'Update failed',
+        description: error.message || 'Failed to update your profile',
+        variant: 'destructive',
+      });
+      throw error;
     }
   };
 
   return (
     <AuthContext.Provider value={{
       user,
+      session,
       isAuthenticated: !!user,
       isLoading,
       login,
       register,
       logout,
-      deleteAccount
+      deleteAccount,
+      updateProfile
     }}>
       {children}
     </AuthContext.Provider>

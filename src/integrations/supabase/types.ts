@@ -9,6 +9,63 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      digital_assets: {
+        Row: {
+          created_at: string
+          id: string
+          last_accessed: string | null
+          name: string
+          size: string
+          storage_path: string
+          type: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          last_accessed?: string | null
+          name: string
+          size: string
+          storage_path: string
+          type: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          last_accessed?: string | null
+          name?: string
+          size?: string
+          storage_path?: string
+          type?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      login_activity: {
+        Row: {
+          id: string
+          login_time: string
+          next_required_login: string
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          login_time?: string
+          next_required_login: string
+          user_id: string
+        }
+        Update: {
+          id?: string
+          login_time?: string
+          next_required_login?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       messages: {
         Row: {
           content: string
@@ -16,8 +73,10 @@ export type Database = {
           delivery_date: string
           id: string
           is_delivered: boolean | null
+          message_type: string
           recipient_email: string
           subject: string
+          trigger_condition: string | null
           updated_at: string | null
           user_id: string
         }
@@ -27,8 +86,10 @@ export type Database = {
           delivery_date: string
           id?: string
           is_delivered?: boolean | null
+          message_type?: string
           recipient_email: string
           subject: string
+          trigger_condition?: string | null
           updated_at?: string | null
           user_id: string
         }
@@ -38,8 +99,10 @@ export type Database = {
           delivery_date?: string
           id?: string
           is_delivered?: boolean | null
+          message_type?: string
           recipient_email?: string
           subject?: string
+          trigger_condition?: string | null
           updated_at?: string | null
           user_id?: string
         }
@@ -66,6 +129,39 @@ export type Database = {
           full_name?: string | null
           id?: string
           updated_at?: string | null
+        }
+        Relationships: []
+      }
+      trusted_contacts: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          name: string
+          phone: string | null
+          relationship: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id?: string
+          name: string
+          phone?: string | null
+          relationship?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          name?: string
+          phone?: string | null
+          relationship?: string | null
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }

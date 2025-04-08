@@ -1,114 +1,240 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+import { toast } from '@/components/ui/use-toast';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
-  PlusCircle,
-  Search,
-  MoreVertical,
-  Users,
-  UserPlus,
-  Mail,
-  Phone,
-  Calendar,
-  CheckCircle2,
-  AlertCircle,
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form';
+import { 
+  AlertCircle, 
+  UserPlus, 
+  Trash2, 
+  Mail, 
+  Phone, 
+  UserCircle, 
+  Heart,
+  PencilLine 
 } from 'lucide-react';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 interface TrustedContact {
   id: string;
+  user_id: string;
   name: string;
   email: string;
   phone?: string;
-  addedOn: string;
-  status: 'active' | 'pending' | 'declined';
-  lastVerified?: string;
-  avatar?: string;
+  relationship?: string;
+  created_at: string;
 }
 
+const formSchema = z.object({
+  name: z.string().min(2, 'Name is required'),
+  email: z.string().email('Invalid email address'),
+  phone: z.string().optional(),
+  relationship: z.string().optional(),
+});
+
 const TrustedContactsPage: React.FC = () => {
-  const [searchQuery, setSearchQuery] = useState('');
+  const { user, isLoading: authLoading } = useAuth();
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [editingContact, setEditingContact] = useState<TrustedContact | null>(null);
+  const queryClient = useQueryClient();
   
-  // Sample contacts data
-  const contacts: TrustedContact[] = [
-    {
-      id: '1',
-      name: 'Sarah Johnson',
-      email: 'sarah@example.com',
-      phone: '(555) 123-4567',
-      addedOn: '2023-03-15',
-      status: 'active',
-      lastVerified: '2023-06-20',
-      avatar: ''
+  const form = useForm<z.infer<typeof formSchema>>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      name: '',
+      email: '',
+      phone: '',
+      relationship: '',
     },
-    {
-      id: '2',
-      name: 'Michael Smith',
-      email: 'michael@example.com',
-      phone: '(555) 234-5678',
-      addedOn: '2023-04-10',
-      status: 'active',
-      lastVerified: '2023-06-15'
-    },
-    {
-      id: '3',
-      name: 'Emily Davis',
-      email: 'emily@example.com',
-      addedOn: '2023-05-05',
-      status: 'pending'
-    },
-    {
-      id: '4',
-      name: 'Robert Wilson',
-      email: 'robert@example.com',
-      phone: '(555) 345-6789',
-      addedOn: '2023-05-20',
-      status: 'declined'
-    }
-  ];
+  });
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'active':
-        return 'bg-green-100 text-green-800 border-green-200';
-      case 'pending':
-        return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-      case 'declined':
-        return 'bg-red-100 text-red-800 border-red-200';
-      default:
-        return 'bg-gray-100 text-gray-800 border-gray-200';
+  // Query trusted contacts
+  const { data: contacts, isLoading } = useQuery({
+    queryKey: ['trustedContacts', user?.id],
+    queryFn: async () => {
+      if (!user) return [];
+      
+      const { data, error } = await supabase
+        .from('trusted_contacts')
+        .select('*')
+        .order('created_at');
+        
+      if (error) throw error;
+      return data as TrustedContact[];
+    },
+    enabled: !!user,
+  });
+
+  // Add trusted contact mutation
+  const addContactMutation = useMutation({
+    mutationFn: async (data: z.infer<typeof formSchema>) => {
+      if (!user) throw new Error('Not authenticated');
+      
+      const { error } = await supabase
+        .from('trusted_contacts')
+        .insert({
+          user_id: user.id,
+          ...data
+        });
+        
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['trustedContacts'] });
+      toast({
+        title: 'Contact added',
+        description: 'Trusted contact has been added successfully.',
+      });
+      setIsDialogOpen(false);
+      form.reset();
+    },
+    onError: (error) => {
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to add contact',
+        variant: 'destructive',
+      });
+    },
+  });
+
+  // Update trusted contact mutation
+  const updateContactMutation = useMutation({
+    mutationFn: async (data: z.infer<typeof formSchema> & { id: string }) => {
+      if (!user) throw new Error('Not authenticated');
+      
+      const { id, ...contactData } = data;
+      const { error } = await supabase
+        .from('trusted_contacts')
+        .update(contactData)
+        .eq('id', id);
+        
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['trustedContacts'] });
+      toast({
+        title: 'Contact updated',
+        description: 'Trusted contact has been updated successfully.',
+      });
+      setIsDialogOpen(false);
+      form.reset();
+      setEditingContact(null);
+    },
+    onError: (error) => {
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to update contact',
+        variant: 'destructive',
+      });
+    },
+  });
+
+  // Delete trusted contact mutation
+  const deleteContactMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from('trusted_contacts')
+        .delete()
+        .eq('id', id);
+        
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['trustedContacts'] });
+      toast({
+        title: 'Contact deleted',
+        description: 'Trusted contact has been removed.',
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to delete contact',
+        variant: 'destructive',
+      });
+    },
+  });
+
+  // Reset form when editing contact changes
+  useEffect(() => {
+    if (editingContact) {
+      form.reset({
+        name: editingContact.name,
+        email: editingContact.email,
+        phone: editingContact.phone || '',
+        relationship: editingContact.relationship || '',
+      });
+    } else {
+      form.reset({
+        name: '',
+        email: '',
+        phone: '',
+        relationship: '',
+      });
+    }
+  }, [editingContact, form]);
+
+  const onSubmit = (data: z.infer<typeof formSchema>) => {
+    if (editingContact) {
+      updateContactMutation.mutate({ ...data, id: editingContact.id });
+    } else {
+      addContactMutation.mutate(data);
     }
   };
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'active':
-        return <CheckCircle2 className="h-4 w-4 text-green-600" />;
-      case 'pending':
-        return <AlertCircle className="h-4 w-4 text-yellow-600" />;
-      case 'declined':
-        return <AlertCircle className="h-4 w-4 text-red-600" />;
-      default:
-        return null;
-    }
+  const handleEditContact = (contact: TrustedContact) => {
+    setEditingContact(contact);
+    setIsDialogOpen(true);
   };
 
-  const filteredContacts = contacts.filter(contact => 
-    contact.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    contact.email.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const handleAddNewClick = () => {
+    setEditingContact(null);
+    setIsDialogOpen(true);
+  };
+
+  const handleCloseDialog = () => {
+    setIsDialogOpen(false);
+    setEditingContact(null);
+    form.reset();
+  };
+
+  if (authLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="animate-pulse">Loading...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto py-8 px-4">
@@ -116,265 +242,180 @@ const TrustedContactsPage: React.FC = () => {
         <div>
           <h1 className="text-3xl font-bold">Trusted Contacts</h1>
           <p className="text-muted-foreground">
-            Manage the people you trust with your digital legacy
+            Manage the people who can access your messages and digital assets
           </p>
         </div>
-
-        <Button className="flex items-center gap-2">
-          <UserPlus className="h-4 w-4" /> 
+        <Button onClick={handleAddNewClick} className="flex items-center gap-2">
+          <UserPlus className="h-4 w-4" />
           Add New Contact
         </Button>
       </div>
 
-      <Card className="mb-8">
-        <CardHeader>
-          <CardTitle className="text-lg">Contact Manager</CardTitle>
-          <CardDescription>
-            These trusted contacts will be notified if you don't log in for 30 days
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-col md:flex-row gap-4 mb-6">
-            <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-              <Input
-                placeholder="Search contacts..."
-                className="pl-10"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-            </div>
-          </div>
-
-          <Tabs defaultValue="all">
-            <TabsList className="mb-6">
-              <TabsTrigger value="all">All Contacts</TabsTrigger>
-              <TabsTrigger value="active">Active</TabsTrigger>
-              <TabsTrigger value="pending">Pending</TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="all" className="mt-0">
-              <div className="space-y-4">
-                {filteredContacts.length > 0 ? (
-                  filteredContacts.map((contact) => (
-                    <div key={contact.id} className="p-4 rounded-lg border border-border flex flex-col sm:flex-row justify-between gap-4">
-                      <div className="flex items-center gap-3">
-                        <Avatar className="h-10 w-10">
-                          <AvatarImage src={contact.avatar} />
-                          <AvatarFallback>
-                            {contact.name.split(' ').map(n => n[0]).join('')}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <div className="font-medium flex items-center gap-2">
-                            {contact.name}
-                            <Badge variant="outline" className={`text-xs ${getStatusColor(contact.status)}`}>
-                              <span className="flex items-center gap-1">
-                                {getStatusIcon(contact.status)}
-                                {contact.status.charAt(0).toUpperCase() + contact.status.slice(1)}
-                              </span>
-                            </Badge>
-                          </div>
-                          <div className="text-sm text-muted-foreground flex items-center gap-1">
-                            <Mail className="h-3 w-3" />
-                            {contact.email}
-                          </div>
-                          {contact.phone && (
-                            <div className="text-sm text-muted-foreground flex items-center gap-1 mt-0.5">
-                              <Phone className="h-3 w-3" />
-                              {contact.phone}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-4 self-end sm:self-center">
-                        <div className="text-xs text-muted-foreground space-y-1">
-                          <div className="flex items-center gap-1">
-                            <Calendar className="h-3 w-3" />
-                            Added: {contact.addedOn}
-                          </div>
-                          {contact.lastVerified && (
-                            <div className="flex items-center gap-1">
-                              <CheckCircle2 className="h-3 w-3" />
-                              Verified: {contact.lastVerified}
-                            </div>
-                          )}
-                        </div>
-                        
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="sm" className="h-8">
-                              <MoreVertical className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem>Send Verification</DropdownMenuItem>
-                            <DropdownMenuItem>Edit Contact</DropdownMenuItem>
-                            <DropdownMenuItem>Manage Access</DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem className="text-red-600">Remove</DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+      {isLoading ? (
+        <div className="flex justify-center my-12">
+          <div className="animate-pulse">Loading contacts...</div>
+        </div>
+      ) : (
+        <div>
+          {contacts && contacts.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {contacts.map((contact) => (
+                <Card key={contact.id}>
+                  <CardHeader className="pb-2">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <CardTitle className="flex items-center gap-2">
+                          <UserCircle className="h-5 w-5" />
+                          {contact.name}
+                        </CardTitle>
+                        <CardDescription className="mt-1">
+                          {contact.relationship || 'No relationship specified'}
+                        </CardDescription>
                       </div>
                     </div>
-                  ))
-                ) : (
-                  <div className="text-center p-8 border border-dashed rounded-lg">
-                    <Users className="mx-auto h-10 w-10 text-muted-foreground opacity-50 mb-4" />
-                    <h3 className="text-lg font-medium mb-1">No contacts found</h3>
-                    <p className="text-muted-foreground mb-4">
-                      {searchQuery ? `No results for "${searchQuery}"` : "You haven't added any trusted contacts yet"}
-                    </p>
-                    <Button>
-                      <UserPlus className="h-4 w-4 mr-2" />
-                      Add Your First Contact
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <Mail className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-sm">{contact.email}</span>
+                      </div>
+                      {contact.phone && (
+                        <div className="flex items-center gap-2">
+                          <Phone className="h-4 w-4 text-muted-foreground" />
+                          <span className="text-sm">{contact.phone}</span>
+                        </div>
+                      )}
+                      {contact.relationship && (
+                        <div className="flex items-center gap-2">
+                          <Heart className="h-4 w-4 text-muted-foreground" />
+                          <span className="text-sm">{contact.relationship}</span>
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                  <CardFooter className="border-t pt-4 flex justify-between">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => handleEditContact(contact)}
+                    >
+                      <PencilLine className="h-4 w-4 mr-1" /> Edit
                     </Button>
-                  </div>
+                    <Button 
+                      variant="destructive" 
+                      size="sm"
+                      onClick={() => deleteContactMutation.mutate(contact.id)}
+                    >
+                      <Trash2 className="h-4 w-4 mr-1" /> Remove
+                    </Button>
+                  </CardFooter>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <Card className="w-full">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <AlertCircle className="h-5 w-5" />
+                  No Trusted Contacts
+                </CardTitle>
+                <CardDescription>
+                  You haven't added any trusted contacts yet. Trusted contacts can be notified in case of your inactivity and can access your messages and digital assets.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex justify-center py-8">
+                  <Button onClick={handleAddNewClick}>
+                    <UserPlus className="h-4 w-4 mr-2" />
+                    Add Your First Trusted Contact
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      )}
+
+      {/* Add/Edit Contact Dialog */}
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>
+              {editingContact ? 'Edit Trusted Contact' : 'Add Trusted Contact'}
+            </DialogTitle>
+            <DialogDescription>
+              {editingContact 
+                ? 'Update the details of your trusted contact.' 
+                : 'Add a person you trust to access your messages and digital assets.'}
+            </DialogDescription>
+          </DialogHeader>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              <FormField
+                control={form.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Full Name</FormLabel>
+                    <FormControl>
+                      <Input placeholder="John Doe" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
                 )}
-              </div>
-            </TabsContent>
-            
-            <TabsContent value="active" className="mt-0">
-              <div className="space-y-4">
-                {filteredContacts
-                  .filter(contact => contact.status === 'active')
-                  .map((contact) => (
-                    <div key={contact.id} className="p-4 rounded-lg border border-border flex flex-col sm:flex-row justify-between gap-4">
-                      {/* Same content as above but filtered */}
-                      <div className="flex items-center gap-3">
-                        <Avatar className="h-10 w-10">
-                          <AvatarImage src={contact.avatar} />
-                          <AvatarFallback>
-                            {contact.name.split(' ').map(n => n[0]).join('')}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <div className="font-medium flex items-center gap-2">
-                            {contact.name}
-                            <Badge variant="outline" className={`text-xs ${getStatusColor(contact.status)}`}>
-                              <span className="flex items-center gap-1">
-                                {getStatusIcon(contact.status)}
-                                {contact.status.charAt(0).toUpperCase() + contact.status.slice(1)}
-                              </span>
-                            </Badge>
-                          </div>
-                          <div className="text-sm text-muted-foreground flex items-center gap-1">
-                            <Mail className="h-3 w-3" />
-                            {contact.email}
-                          </div>
-                          {contact.phone && (
-                            <div className="text-sm text-muted-foreground flex items-center gap-1 mt-0.5">
-                              <Phone className="h-3 w-3" />
-                              {contact.phone}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-4 self-end sm:self-center">
-                        <div className="text-xs text-muted-foreground space-y-1">
-                          <div className="flex items-center gap-1">
-                            <Calendar className="h-3 w-3" />
-                            Added: {contact.addedOn}
-                          </div>
-                          {contact.lastVerified && (
-                            <div className="flex items-center gap-1">
-                              <CheckCircle2 className="h-3 w-3" />
-                              Verified: {contact.lastVerified}
-                            </div>
-                          )}
-                        </div>
-                        
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="sm" className="h-8">
-                              <MoreVertical className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem>Send Verification</DropdownMenuItem>
-                            <DropdownMenuItem>Edit Contact</DropdownMenuItem>
-                            <DropdownMenuItem>Manage Access</DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem className="text-red-600">Remove</DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
-                    </div>
-                  ))}
-              </div>
-            </TabsContent>
-            
-            <TabsContent value="pending" className="mt-0">
-              <div className="space-y-4">
-                {filteredContacts
-                  .filter(contact => contact.status === 'pending')
-                  .map((contact) => (
-                    <div key={contact.id} className="p-4 rounded-lg border border-border flex flex-col sm:flex-row justify-between gap-4">
-                      {/* Same content as above but filtered */}
-                      <div className="flex items-center gap-3">
-                        <Avatar className="h-10 w-10">
-                          <AvatarImage src={contact.avatar} />
-                          <AvatarFallback>
-                            {contact.name.split(' ').map(n => n[0]).join('')}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <div className="font-medium flex items-center gap-2">
-                            {contact.name}
-                            <Badge variant="outline" className={`text-xs ${getStatusColor(contact.status)}`}>
-                              <span className="flex items-center gap-1">
-                                {getStatusIcon(contact.status)}
-                                {contact.status.charAt(0).toUpperCase() + contact.status.slice(1)}
-                              </span>
-                            </Badge>
-                          </div>
-                          <div className="text-sm text-muted-foreground flex items-center gap-1">
-                            <Mail className="h-3 w-3" />
-                            {contact.email}
-                          </div>
-                          {contact.phone && (
-                            <div className="text-sm text-muted-foreground flex items-center gap-1 mt-0.5">
-                              <Phone className="h-3 w-3" />
-                              {contact.phone}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-4 self-end sm:self-center">
-                        <div className="text-xs text-muted-foreground space-y-1">
-                          <div className="flex items-center gap-1">
-                            <Calendar className="h-3 w-3" />
-                            Added: {contact.addedOn}
-                          </div>
-                          {contact.lastVerified && (
-                            <div className="flex items-center gap-1">
-                              <CheckCircle2 className="h-3 w-3" />
-                              Verified: {contact.lastVerified}
-                            </div>
-                          )}
-                        </div>
-                        
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="sm" className="h-8">
-                              <MoreVertical className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem>Resend Invitation</DropdownMenuItem>
-                            <DropdownMenuItem>Edit Contact</DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem className="text-red-600">Cancel Invitation</DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
-                    </div>
-                  ))}
-              </div>
-            </TabsContent>
-          </Tabs>
-        </CardContent>
-      </Card>
+              />
+              <FormField
+                control={form.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Email Address</FormLabel>
+                    <FormControl>
+                      <Input type="email" placeholder="john@example.com" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="phone"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Phone Number (Optional)</FormLabel>
+                    <FormControl>
+                      <Input placeholder="+1234567890" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="relationship"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Relationship (Optional)</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Family, Friend, etc." {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={handleCloseDialog}>
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={addContactMutation.isPending || updateContactMutation.isPending}>
+                  {editingContact ? 'Update' : 'Add'} Contact
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
