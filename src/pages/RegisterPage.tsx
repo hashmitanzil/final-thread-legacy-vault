@@ -25,7 +25,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Shield } from 'lucide-react';
+import { Shield, Mail } from 'lucide-react';
 
 const formSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),
@@ -41,7 +41,7 @@ const formSchema = z.object({
 });
 
 const RegisterPage: React.FC = () => {
-  const { register, isAuthenticated, isLoading } = useAuth();
+  const { register, loginWithGoogle, isAuthenticated, isLoading } = useAuth();
   const navigate = useNavigate();
   
   const form = useForm<z.infer<typeof formSchema>>({
@@ -72,6 +72,16 @@ const RegisterPage: React.FC = () => {
     }
   };
 
+  const handleGoogleSignIn = async () => {
+    try {
+      await loginWithGoogle();
+      // Redirect will be handled by the OAuth flow
+    } catch (error) {
+      console.error('Google sign-in error:', error);
+      // Error handling done in AuthContext
+    }
+  };
+
   if (isAuthenticated) {
     return null; // Will redirect via useEffect
   }
@@ -86,6 +96,33 @@ const RegisterPage: React.FC = () => {
           </CardDescription>
         </CardHeader>
         <CardContent>
+          <div className="w-full">
+            <Button 
+              variant="outline" 
+              className="w-full flex items-center justify-center gap-2 mb-4"
+              onClick={handleGoogleSignIn}
+              disabled={isLoading}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10"/>
+                <path d="M8 12 h8"/>
+                <path d="M12 8 v8"/>
+              </svg>
+              Sign up with Google
+            </Button>
+          </div>
+
+          <div className="relative my-4">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t border-border" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-background px-2 text-muted-foreground">
+                Or continue with email
+              </span>
+            </div>
+          </div>
+
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
               <FormField
