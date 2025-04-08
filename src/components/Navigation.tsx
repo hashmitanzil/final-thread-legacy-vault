@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -11,7 +11,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Home, KeyRound, MessageSquare, Settings, Users, Menu, Clock, Lock } from 'lucide-react';
+import { Home, KeyRound, MessageSquare, Settings, Users, Menu, Clock, Lock, FileArchive } from 'lucide-react';
 
 interface NavigationProps {
   user?: {
@@ -24,6 +24,8 @@ interface NavigationProps {
 }
 
 const Navigation: React.FC<NavigationProps> = ({ user, onLogin, onLogout }) => {
+  const location = useLocation();
+  
   return (
     <nav className="w-full px-4 py-3 flex items-center justify-between border-b border-border">
       <div className="flex items-center space-x-2">
@@ -36,16 +38,16 @@ const Navigation: React.FC<NavigationProps> = ({ user, onLogin, onLogout }) => {
       </div>
 
       <div className="hidden md:flex items-center space-x-8">
-        <Link to="/" className="text-muted-foreground hover:text-foreground transition-colors">
+        <Link to="/" className={`${location.pathname === '/' ? 'text-foreground' : 'text-muted-foreground'} hover:text-foreground transition-colors`}>
           Home
         </Link>
-        <Link to="/about" className="text-muted-foreground hover:text-foreground transition-colors">
+        <Link to="/about" className={`${location.pathname === '/about' ? 'text-foreground' : 'text-muted-foreground'} hover:text-foreground transition-colors`}>
           About
         </Link>
-        <Link to="/features" className="text-muted-foreground hover:text-foreground transition-colors">
+        <Link to="/features" className={`${location.pathname === '/features' ? 'text-foreground' : 'text-muted-foreground'} hover:text-foreground transition-colors`}>
           Features
         </Link>
-        <Link to="/pricing" className="text-muted-foreground hover:text-foreground transition-colors">
+        <Link to="/pricing" className={`${location.pathname === '/pricing' ? 'text-foreground' : 'text-muted-foreground'} hover:text-foreground transition-colors`}>
           Pricing
         </Link>
       </div>
@@ -89,9 +91,9 @@ const Navigation: React.FC<NavigationProps> = ({ user, onLogin, onLogout }) => {
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
-                  <Link to="/crypto-vault" className="flex items-center cursor-pointer">
-                    <KeyRound className="mr-2 h-4 w-4" />
-                    <span>Crypto Vault</span>
+                  <Link to="/digital-assets" className="flex items-center cursor-pointer">
+                    <FileArchive className="mr-2 h-4 w-4" />
+                    <span>Digital Assets</span>
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>

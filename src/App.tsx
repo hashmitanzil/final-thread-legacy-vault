@@ -17,6 +17,9 @@ import RegisterPage from "./pages/RegisterPage";
 import DashboardPage from "./pages/DashboardPage";
 import MessagesPage from "./pages/MessagesPage";
 import NotFoundPage from "./pages/NotFoundPage";
+import DigitalAssetVaultPage from "./pages/DigitalAssetVaultPage";
+import TrustedContactsPage from "./pages/TrustedContactsPage";
+import AccountSettingsPage from "./pages/AccountSettingsPage";
 
 const queryClient = new QueryClient();
 
@@ -106,27 +109,37 @@ const App = () => (
                   </ProtectedRoute>
                 } 
               />
-              {/* Additional protected routes */}
+              <Route 
+                path="/digital-assets" 
+                element={
+                  <ProtectedRoute>
+                    <MotionLayout>
+                      <DigitalAssetVaultPage />
+                    </MotionLayout>
+                  </ProtectedRoute>
+                } 
+              />
               <Route 
                 path="/trusted-contacts" 
                 element={
                   <ProtectedRoute>
                     <MotionLayout>
-                      <NotFoundPage />
+                      <TrustedContactsPage />
                     </MotionLayout>
                   </ProtectedRoute>
                 } 
               />
               <Route 
-                path="/crypto-vault" 
+                path="/settings" 
                 element={
                   <ProtectedRoute>
                     <MotionLayout>
-                      <NotFoundPage />
+                      <AccountSettingsPage />
                     </MotionLayout>
                   </ProtectedRoute>
                 } 
               />
+              {/* Additional routes */}
               <Route 
                 path="/messages/new" 
                 element={
