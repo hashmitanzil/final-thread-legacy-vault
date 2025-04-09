@@ -27,6 +27,9 @@ import PrivacyPolicyPage from "./pages/PrivacyPolicyPage";
 import TermsPage from "./pages/TermsPage";
 import ContactPage from "./pages/ContactPage";
 import HelpCenterPage from "./pages/HelpCenterPage";
+import EndOfLifePage from "./pages/EndOfLifePage";
+import TimeCapsulePage from "./pages/TimeCapsulePage";
+import ExportPage from "./pages/ExportPage";
 
 const queryClient = new QueryClient();
 
@@ -72,6 +75,7 @@ const App = () => (
           <Sonner />
           <Layout>
             <Routes>
+              {/* Public routes */}
               <Route 
                 path="/" 
                 element={
@@ -120,6 +124,40 @@ const App = () => (
                   </MotionLayout>
                 } 
               />
+              <Route 
+                path="/privacy" 
+                element={
+                  <MotionLayout>
+                    <PrivacyPolicyPage />
+                  </MotionLayout>
+                } 
+              />
+              <Route 
+                path="/terms" 
+                element={
+                  <MotionLayout>
+                    <TermsPage />
+                  </MotionLayout>
+                } 
+              />
+              <Route 
+                path="/contact" 
+                element={
+                  <MotionLayout>
+                    <ContactPage />
+                  </MotionLayout>
+                } 
+              />
+              <Route 
+                path="/help" 
+                element={
+                  <MotionLayout>
+                    <HelpCenterPage />
+                  </MotionLayout>
+                } 
+              />
+              
+              {/* Protected routes */}
               <Route 
                 path="/dashboard" 
                 element={
@@ -171,35 +209,33 @@ const App = () => (
                 } 
               />
               <Route 
-                path="/privacy" 
+                path="/end-of-life" 
                 element={
-                  <MotionLayout>
-                    <PrivacyPolicyPage />
-                  </MotionLayout>
+                  <ProtectedRoute>
+                    <MotionLayout>
+                      <EndOfLifePage />
+                    </MotionLayout>
+                  </ProtectedRoute>
                 } 
               />
               <Route 
-                path="/terms" 
+                path="/time-capsule" 
                 element={
-                  <MotionLayout>
-                    <TermsPage />
-                  </MotionLayout>
+                  <ProtectedRoute>
+                    <MotionLayout>
+                      <TimeCapsulePage />
+                    </MotionLayout>
+                  </ProtectedRoute>
                 } 
               />
               <Route 
-                path="/contact" 
+                path="/export" 
                 element={
-                  <MotionLayout>
-                    <ContactPage />
-                  </MotionLayout>
-                } 
-              />
-              <Route 
-                path="/help" 
-                element={
-                  <MotionLayout>
-                    <HelpCenterPage />
-                  </MotionLayout>
+                  <ProtectedRoute>
+                    <MotionLayout>
+                      <ExportPage />
+                    </MotionLayout>
+                  </ProtectedRoute>
                 } 
               />
               <Route 
