@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -7,6 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/components/ui/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { EOLInstructions } from '@/types/database';
 import { 
   Card, 
   CardContent, 
@@ -46,17 +46,6 @@ import {
 } from 'lucide-react';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
-
-interface EOLInstructions {
-  id: string;
-  user_id: string;
-  funeral_notes: string | null;
-  organ_donation: boolean;
-  final_message: string;
-  access_level: 'private' | 'contacts' | 'public';
-  created_at: string;
-  updated_at: string;
-}
 
 const formSchema = z.object({
   funeral_notes: z.string().optional(),
@@ -128,7 +117,7 @@ const EndOfLifePage: React.FC = () => {
           .eq('id', eolInstructions.id);
           
         if (error) throw error;
-        return { ...eolInstructions, ...data };
+        return { ...eolInstructions, ...data } as EOLInstructions;
       } else {
         // Create new record
         const { data: newRecord, error } = await supabase

@@ -1,9 +1,9 @@
-
 import React, { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/components/ui/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useMutation, useQuery } from '@tanstack/react-query';
+import { ExportLog } from '@/types/database';
 import { 
   Card, 
   CardContent, 
@@ -32,16 +32,6 @@ import {
   TabsTrigger 
 } from '@/components/ui/tabs';
 import { format } from 'date-fns';
-
-interface ExportLog {
-  id: string;
-  user_id: string;
-  type: 'zip' | 'pdf';
-  download_url: string | null;
-  requested_at: string;
-  completed_at?: string | null;
-  status: 'pending' | 'completed' | 'failed';
-}
 
 const ExportPage: React.FC = () => {
   const { user } = useAuth();

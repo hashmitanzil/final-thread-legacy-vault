@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -7,6 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/components/ui/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { TimeCapsule } from '@/types/database';
 import { 
   Card, 
   CardContent, 
@@ -61,18 +61,6 @@ import {
 } from 'lucide-react';
 import { format, addYears, differenceInDays, isBefore } from 'date-fns';
 
-interface TimeCapsule {
-  id: string;
-  user_id: string;
-  title: string;
-  description: string;
-  type: 'message' | 'file';
-  content: string;
-  lock_until: string;
-  is_locked: boolean;
-  created_at: string;
-}
-
 const formSchema = z.object({
   title: z.string().min(2, 'Title is required'),
   description: z.string().optional(),
@@ -102,7 +90,6 @@ const TimeCapsulePage: React.FC = () => {
     },
   });
 
-  // Set preset date
   const handlePresetSelection = (preset: '5years' | '10years' | 'custom') => {
     setSelectedPreset(preset);
     if (preset === '5years') {
@@ -112,7 +99,6 @@ const TimeCapsulePage: React.FC = () => {
     }
   };
 
-  // Fetch time capsules
   const { data: timeCapsules, isLoading } = useQuery({
     queryKey: ['timeCapsules', user?.id],
     queryFn: async () => {
@@ -130,7 +116,6 @@ const TimeCapsulePage: React.FC = () => {
     enabled: !!user,
   });
 
-  // Create time capsule
   const createCapsuleMutation = useMutation({
     mutationFn: async (data: z.infer<typeof formSchema>) => {
       if (!user) throw new Error('Not authenticated');

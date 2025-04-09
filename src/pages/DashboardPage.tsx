@@ -1,347 +1,292 @@
 
-import React from "react";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip } from "recharts";
-import { useNavigate } from "react-router-dom";
-import { useAuth } from "@/contexts/AuthContext";
+import React from 'react';
+import { useAuth } from '@/contexts/AuthContext';
+import LegacyStatsDashboard from '@/components/LegacyStatsDashboard';
+import { Button } from '@/components/ui/button';
 import { 
-  Clock, 
-  File, 
-  MessageSquare, 
-  Users, 
-  Heart, 
-  ShieldCheck, 
-  BarChart3, 
-  Send, 
-  Clock4, 
-  Bot, 
-  FileKey, 
-  Brain 
-} from "lucide-react";
+  Card, 
+  CardContent, 
+  CardDescription, 
+  CardFooter, 
+  CardHeader, 
+  CardTitle 
+} from '@/components/ui/card';
+import { 
+  Tabs, 
+  TabsContent, 
+  TabsList, 
+  TabsTrigger 
+} from '@/components/ui/tabs';
+import {
+  Clock,
+  Mail,
+  FileArchive,
+  User,
+  UserPlus,
+  Heart,
+  Download,
+  ChevronRight
+} from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
-const DashboardPage: React.FC = () => {
-  const navigate = useNavigate();
+const DashboardPage = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   
-  // Sample data for charts
-  const pieData = [
-    { name: "Messages", value: 12, color: "#36A2EB" },
-    { name: "Documents", value: 8, color: "#FF6384" },
-    { name: "Media", value: 5, color: "#FFCE56" },
-  ];
+  if (!user) {
+    return (
+      <div className="container mx-auto py-8 px-4">
+        <h1 className="text-3xl font-bold">Dashboard</h1>
+        <p>Please log in to view your dashboard.</p>
+      </div>
+    );
+  }
   
-  const barData = [
-    { name: "Jan", count: 2 },
-    { name: "Feb", count: 5 },
-    { name: "Mar", count: 3 },
-    { name: "Apr", count: 7 },
-    { name: "May", count: 4 },
-    { name: "Jun", count: 8 },
-  ];
-
   return (
     <div className="container mx-auto py-8 px-4">
-      <h1 className="text-3xl font-bold mb-2">Welcome back, {user?.user_metadata?.name || "Friend"}</h1>
-      <p className="text-muted-foreground mb-8">Create, manage, and schedule your legacy for your loved ones.</p>
-      
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-lg flex items-center">
-              <MessageSquare className="mr-2 h-5 w-5 text-primary" />
-              Messages
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-bold">12</p>
-            <p className="text-sm text-muted-foreground">3 scheduled for delivery</p>
-          </CardContent>
-          <CardFooter>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              className="w-full"
-              onClick={() => navigate("/messages")}
-            >
-              Manage Messages
-            </Button>
-          </CardFooter>
-        </Card>
-        
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-lg flex items-center">
-              <File className="mr-2 h-5 w-5 text-primary" />
-              Digital Assets
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-bold">25</p>
-            <p className="text-sm text-muted-foreground">8 documents, 17 media files</p>
-          </CardContent>
-          <CardFooter>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              className="w-full"
-              onClick={() => navigate("/digital-assets")}
-            >
-              View Vault
-            </Button>
-          </CardFooter>
-        </Card>
-        
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-lg flex items-center">
-              <Users className="mr-2 h-5 w-5 text-primary" />
-              Trusted Contacts
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-bold">4</p>
-            <p className="text-sm text-muted-foreground">2 with full access</p>
-          </CardContent>
-          <CardFooter>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              className="w-full"
-              onClick={() => navigate("/trusted-contacts")}
-            >
-              Manage Contacts
-            </Button>
-          </CardFooter>
-        </Card>
-        
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-lg flex items-center">
-              <Clock className="mr-2 h-5 w-5 text-primary" />
-              Next Delivery
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-lg font-medium">Jun 15, 2025</p>
-            <p className="text-sm text-muted-foreground">Birthday message for Emma</p>
-          </CardContent>
-          <CardFooter>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              className="w-full"
-              onClick={() => navigate("/messages")}
-            >
-              View Schedule
-            </Button>
-          </CardFooter>
-        </Card>
-      </div>
-      
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle>Quick Actions</CardTitle>
-            <CardDescription>
-              Create and manage your digital legacy
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <Button 
-                variant="outline" 
-                className="h-auto py-4 px-3 flex flex-col items-center justify-center text-center"
-                onClick={() => navigate("/messages/new")}
-              >
-                <MessageSquare className="h-10 w-10 mb-2 text-primary" />
-                <span className="text-sm font-medium">Create New Message</span>
-                <span className="text-xs text-muted-foreground mt-1">Text, video or voice</span>
-              </Button>
-              
-              <Button 
-                variant="outline" 
-                className="h-auto py-4 px-3 flex flex-col items-center justify-center text-center"
-                onClick={() => navigate("/digital-assets")}
-              >
-                <FileKey className="h-10 w-10 mb-2 text-primary" />
-                <span className="text-sm font-medium">Upload to Vault</span>
-                <span className="text-xs text-muted-foreground mt-1">Documents, photos, videos</span>
-              </Button>
-              
-              <Button 
-                variant="outline" 
-                className="h-auto py-4 px-3 flex flex-col items-center justify-center text-center"
-                onClick={() => navigate("/trusted-contacts")}
-              >
-                <Users className="h-10 w-10 mb-2 text-primary" />
-                <span className="text-sm font-medium">Add Trusted Contact</span>
-                <span className="text-xs text-muted-foreground mt-1">Assign access permissions</span>
-              </Button>
-              
-              <Button 
-                variant="outline" 
-                className="h-auto py-4 px-3 flex flex-col items-center justify-center text-center"
-                onClick={() => navigate("/end-of-life")}
-              >
-                <Heart className="h-10 w-10 mb-2 text-primary" />
-                <span className="text-sm font-medium">Final Wishes</span>
-                <span className="text-xs text-muted-foreground mt-1">End-of-life instructions</span>
-              </Button>
-              
-              <Button 
-                variant="outline" 
-                className="h-auto py-4 px-3 flex flex-col items-center justify-center text-center"
-                onClick={() => navigate("/messages?time-capsule=true")}
-              >
-                <Clock4 className="h-10 w-10 mb-2 text-primary" />
-                <span className="text-sm font-medium">Time Capsule</span>
-                <span className="text-xs text-muted-foreground mt-1">Lock content until future date</span>
-              </Button>
-              
-              <Button 
-                variant="outline" 
-                className="h-auto py-4 px-3 flex flex-col items-center justify-center text-center"
-                onClick={() => navigate("/export")}
-              >
-                <ShieldCheck className="h-10 w-10 mb-2 text-primary" />
-                <span className="text-sm font-medium">Backup Legacy</span>
-                <span className="text-xs text-muted-foreground mt-1">Export all content</span>
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader>
-            <CardTitle>AI Avatar</CardTitle>
-            <CardDescription>
-              Coming Soon
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="flex flex-col items-center text-center">
-            <div className="relative w-24 h-24 rounded-full bg-primary/10 flex items-center justify-center mb-4">
-              <Brain className="h-12 w-12 text-primary opacity-50" />
-              <div className="absolute -top-2 -right-2 bg-yellow-600 text-white text-xs px-2 py-1 rounded-full">
-                Soon
-              </div>
-            </div>
-            <h3 className="font-medium text-lg mb-1">Digital Memory Preservation</h3>
-            <p className="text-sm text-muted-foreground mb-4">
-              Create an AI version of yourself that your loved ones can interact with after you're gone. Preserve your voice, personality, and memories.
-            </p>
-            <Button variant="secondary" disabled>Join Waitlist</Button>
-          </CardContent>
-        </Card>
+      <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
+        <div>
+          <h1 className="text-3xl font-bold">Dashboard</h1>
+          <p className="text-muted-foreground">
+            Welcome back! Here's an overview of your digital legacy
+          </p>
+        </div>
       </div>
       
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle>Recent Activity</CardTitle>
-            <CardDescription>
-              Your latest actions and updates
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="flex items-start gap-4">
-                <div className="bg-primary/10 p-2 rounded-full">
-                  <File className="h-5 w-5 text-primary" />
-                </div>
-                <div>
-                  <p className="font-medium">Uploaded will document</p>
-                  <p className="text-sm text-muted-foreground">Added to Legal Documents folder</p>
-                  <p className="text-xs text-muted-foreground">Today at 9:42 AM</p>
-                </div>
-              </div>
-              
-              <div className="flex items-start gap-4">
-                <div className="bg-primary/10 p-2 rounded-full">
-                  <MessageSquare className="h-5 w-5 text-primary" />
-                </div>
-                <div>
-                  <p className="font-medium">Created new message</p>
-                  <p className="text-sm text-muted-foreground">For Emma, scheduled for her 21st birthday</p>
-                  <p className="text-xs text-muted-foreground">Yesterday at 3:15 PM</p>
-                </div>
-              </div>
-              
-              <div className="flex items-start gap-4">
-                <div className="bg-primary/10 p-2 rounded-full">
-                  <Users className="h-5 w-5 text-primary" />
-                </div>
-                <div>
-                  <p className="font-medium">Added new trusted contact</p>
-                  <p className="text-sm text-muted-foreground">James Smith (Family)</p>
-                  <p className="text-xs text-muted-foreground">May 3, 2025 at 11:23 AM</p>
-                </div>
-              </div>
-              
-              <div className="flex items-start gap-4">
-                <div className="bg-primary/10 p-2 rounded-full">
-                  <Clock className="h-5 w-5 text-primary" />
-                </div>
-                <div>
-                  <p className="font-medium">Set up inactivity trigger</p>
-                  <p className="text-sm text-muted-foreground">Will activate after 90 days of inactivity</p>
-                  <p className="text-xs text-muted-foreground">April 28, 2025 at 2:07 PM</p>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        <div className="lg:col-span-2">
+          <Tabs defaultValue="plan" className="w-full">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="plan">Legacy Plan</TabsTrigger>
+              <TabsTrigger value="activity">Recent Activity</TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="plan">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Complete Your Legacy Plan</CardTitle>
+                  <CardDescription>
+                    Take steps to ensure your digital legacy is preserved
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="flex items-start p-4 border rounded-lg hover:bg-muted/50 transition-colors">
+                      <div className="mr-4 p-2 rounded-full bg-blue-100">
+                        <Mail className="h-5 w-5 text-blue-600" />
+                      </div>
+                      <div className="flex-1">
+                        <h3 className="font-medium">Legacy Messages</h3>
+                        <p className="text-sm text-muted-foreground mb-3">
+                          Create scheduled messages to be delivered to your loved ones in the future.
+                        </p>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="flex items-center"
+                          onClick={() => navigate('/messages')}
+                        >
+                          Manage Messages
+                          <ChevronRight className="h-4 w-4 ml-1" />
+                        </Button>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-start p-4 border rounded-lg hover:bg-muted/50 transition-colors">
+                      <div className="mr-4 p-2 rounded-full bg-purple-100">
+                        <Clock className="h-5 w-5 text-purple-600" />
+                      </div>
+                      <div className="flex-1">
+                        <h3 className="font-medium">Time Capsules</h3>
+                        <p className="text-sm text-muted-foreground mb-3">
+                          Lock away messages and files to be opened at a future date.
+                        </p>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="flex items-center"
+                          onClick={() => navigate('/time-capsule')}
+                        >
+                          Manage Time Capsules
+                          <ChevronRight className="h-4 w-4 ml-1" />
+                        </Button>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-start p-4 border rounded-lg hover:bg-muted/50 transition-colors">
+                      <div className="mr-4 p-2 rounded-full bg-amber-100">
+                        <FileArchive className="h-5 w-5 text-amber-600" />
+                      </div>
+                      <div className="flex-1">
+                        <h3 className="font-medium">Digital Asset Vault</h3>
+                        <p className="text-sm text-muted-foreground mb-3">
+                          Store important documents, photos, and other digital assets securely.
+                        </p>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="flex items-center"
+                          onClick={() => navigate('/digital-assets')}
+                        >
+                          Manage Digital Assets
+                          <ChevronRight className="h-4 w-4 ml-1" />
+                        </Button>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-start p-4 border rounded-lg hover:bg-muted/50 transition-colors">
+                      <div className="mr-4 p-2 rounded-full bg-red-100">
+                        <Heart className="h-5 w-5 text-red-600" />
+                      </div>
+                      <div className="flex-1">
+                        <h3 className="font-medium">End-of-Life Instructions</h3>
+                        <p className="text-sm text-muted-foreground mb-3">
+                          Document your final wishes and preferences for your loved ones.
+                        </p>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="flex items-center"
+                          onClick={() => navigate('/end-of-life')}
+                        >
+                          Manage Instructions
+                          <ChevronRight className="h-4 w-4 ml-1" />
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+            
+            <TabsContent value="activity">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Recent Activity</CardTitle>
+                  <CardDescription>
+                    Recent changes to your digital legacy plan
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-8">
+                    <div className="flex items-start">
+                      <div className="relative mr-4">
+                        <div className="p-2 rounded-full bg-blue-100">
+                          <Mail className="h-4 w-4 text-blue-600" />
+                        </div>
+                        <div className="absolute top-0 left-0 w-full h-full flex items-center justify-center">
+                          <div className="w-px h-full bg-border absolute top-[30px]"></div>
+                        </div>
+                      </div>
+                      <div>
+                        <p className="font-medium">Message Created</p>
+                        <p className="text-xs text-muted-foreground">Today at 10:30 AM</p>
+                        <p className="text-sm mt-1">You created a new legacy message for your family.</p>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-start">
+                      <div className="relative mr-4">
+                        <div className="p-2 rounded-full bg-purple-100">
+                          <UserPlus className="h-4 w-4 text-purple-600" />
+                        </div>
+                        <div className="absolute top-0 left-0 w-full h-full flex items-center justify-center">
+                          <div className="w-px h-full bg-border absolute top-[30px]"></div>
+                        </div>
+                      </div>
+                      <div>
+                        <p className="font-medium">Trusted Contact Added</p>
+                        <p className="text-xs text-muted-foreground">Yesterday at 2:15 PM</p>
+                        <p className="text-sm mt-1">You added Jane Doe as a trusted contact.</p>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-start">
+                      <div className="relative mr-4">
+                        <div className="p-2 rounded-full bg-green-100">
+                          <Download className="h-4 w-4 text-green-600" />
+                        </div>
+                      </div>
+                      <div>
+                        <p className="font-medium">Vault Export</p>
+                        <p className="text-xs text-muted-foreground">April 5, 2025</p>
+                        <p className="text-sm mt-1">You exported a backup of your digital legacy vault.</p>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+                <CardFooter>
+                  <Button variant="outline" className="w-full" onClick={() => navigate('/export')}>
+                    View All Activity
+                  </Button>
+                </CardFooter>
+              </Card>
+            </TabsContent>
+          </Tabs>
+        </div>
         
-        <Card>
-          <CardHeader>
-            <CardTitle>Legacy Overview</CardTitle>
-            <CardDescription>
-              Content distribution
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Tabs defaultValue="type">
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="type">By Type</TabsTrigger>
-                <TabsTrigger value="time">Timeline</TabsTrigger>
-              </TabsList>
-              
-              <TabsContent value="type" className="h-[240px] flex items-center justify-center">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={pieData}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={60}
-                      outerRadius={80}
-                      paddingAngle={5}
-                      dataKey="value"
-                      label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                    >
-                      {pieData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Pie>
-                    <Tooltip />
-                  </PieChart>
-                </ResponsiveContainer>
-              </TabsContent>
-              
-              <TabsContent value="time" className="h-[240px] flex items-center justify-center">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={barData}>
-                    <XAxis dataKey="name" />
-                    <YAxis />
-                    <Tooltip />
-                    <Bar dataKey="count" fill="#36A2EB" />
-                  </BarChart>
-                </ResponsiveContainer>
-              </TabsContent>
-            </Tabs>
-          </CardContent>
-        </Card>
+        <div className="space-y-6">
+          <LegacyStatsDashboard />
+          
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg flex items-center">
+                <User className="h-5 w-5 mr-2 text-primary" />
+                Account Information
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-muted-foreground">Email</span>
+                <span className="text-sm font-medium">{user.email}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-muted-foreground">Plan</span>
+                <span className="text-sm bg-primary/10 text-primary px-2 py-1 rounded-full font-medium">
+                  Free Plan
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-muted-foreground">Storage</span>
+                <span className="text-sm font-medium">1 GB</span>
+              </div>
+              <div className="pt-3 mt-3 border-t flex flex-col gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full justify-start"
+                  onClick={() => navigate('/settings')}
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="mr-2 h-4 w-4"
+                  >
+                    <path d="M12 2H2v10h10V2Z" />
+                    <path d="M22 2h-6v6h6V2Z" />
+                    <path d="M22 12h-6v10h6V12Z" />
+                    <path d="M12 12H2v10h10V12Z" />
+                  </svg>
+                  Account Settings
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full justify-start"
+                  onClick={() => navigate('/export')}
+                >
+                  <Download className="mr-2 h-4 w-4" />
+                  Export Your Data
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </div>
   );
