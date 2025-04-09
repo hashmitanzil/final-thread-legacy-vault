@@ -26,6 +26,7 @@ import AccountSettingsPage from "./pages/AccountSettingsPage";
 import PrivacyPolicyPage from "./pages/PrivacyPolicyPage";
 import TermsPage from "./pages/TermsPage";
 import ContactPage from "./pages/ContactPage";
+import HelpCenterPage from "./pages/HelpCenterPage";
 
 const queryClient = new QueryClient();
 
@@ -169,7 +170,6 @@ const App = () => (
                   </ProtectedRoute>
                 } 
               />
-              {/* New pages */}
               <Route 
                 path="/privacy" 
                 element={
@@ -194,7 +194,14 @@ const App = () => (
                   </MotionLayout>
                 } 
               />
-              {/* Additional routes */}
+              <Route 
+                path="/help" 
+                element={
+                  <MotionLayout>
+                    <HelpCenterPage />
+                  </MotionLayout>
+                } 
+              />
               <Route 
                 path="/messages/new" 
                 element={
@@ -205,7 +212,6 @@ const App = () => (
                   </ProtectedRoute>
                 } 
               />
-              {/* Not found route */}
               <Route path="*" element={<NotFoundPage />} />
             </Routes>
           </Layout>
