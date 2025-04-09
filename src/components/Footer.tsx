@@ -1,7 +1,6 @@
-
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Heart, Mail, Globe, GitHub } from 'lucide-react';
+import { Heart, Mail, Globe, Github } from 'lucide-react';
 
 const Footer: React.FC = () => {
   return (
