@@ -23,6 +23,9 @@ import NotFoundPage from "./pages/NotFoundPage";
 import DigitalAssetVaultPage from "./pages/DigitalAssetVaultPage";
 import TrustedContactsPage from "./pages/TrustedContactsPage";
 import AccountSettingsPage from "./pages/AccountSettingsPage";
+import PrivacyPolicyPage from "./pages/PrivacyPolicyPage";
+import TermsPage from "./pages/TermsPage";
+import ContactPage from "./pages/ContactPage";
 
 const queryClient = new QueryClient();
 
@@ -164,6 +167,31 @@ const App = () => (
                       <AccountSettingsPage />
                     </MotionLayout>
                   </ProtectedRoute>
+                } 
+              />
+              {/* New pages */}
+              <Route 
+                path="/privacy" 
+                element={
+                  <MotionLayout>
+                    <PrivacyPolicyPage />
+                  </MotionLayout>
+                } 
+              />
+              <Route 
+                path="/terms" 
+                element={
+                  <MotionLayout>
+                    <TermsPage />
+                  </MotionLayout>
+                } 
+              />
+              <Route 
+                path="/contact" 
+                element={
+                  <MotionLayout>
+                    <ContactPage />
+                  </MotionLayout>
                 } 
               />
               {/* Additional routes */}
