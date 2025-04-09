@@ -50,7 +50,7 @@ import { Label } from '@/components/ui/label';
 interface EOLInstructions {
   id: string;
   user_id: string;
-  funeral_notes: string;
+  funeral_notes: string | null;
   organ_donation: boolean;
   final_message: string;
   access_level: 'private' | 'contacts' | 'public';

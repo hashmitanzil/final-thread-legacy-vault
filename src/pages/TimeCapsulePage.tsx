@@ -27,14 +27,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { 
-  Calendar, 
-  CalendarCell, 
-  CalendarGrid, 
-  CalendarHeading, 
-  CalendarMonthHeader, 
-  CalendarNavigation 
-} from '@/components/ui/calendar';
+import { Calendar } from '@/components/ui/calendar';
 import {
   Popover,
   PopoverContent,
@@ -56,7 +49,6 @@ import {
   Timer, 
   Hourglass, 
   Package,
-  Calendar as CalendarIconNew,
   Plus,
   FileText,
   MessageSquare,

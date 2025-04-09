@@ -45,6 +45,69 @@ export type Database = {
         }
         Relationships: []
       }
+      eol_instructions: {
+        Row: {
+          access_level: string
+          created_at: string
+          final_message: string
+          funeral_notes: string | null
+          id: string
+          organ_donation: boolean | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          access_level?: string
+          created_at?: string
+          final_message: string
+          funeral_notes?: string | null
+          id?: string
+          organ_donation?: boolean | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          access_level?: string
+          created_at?: string
+          final_message?: string
+          funeral_notes?: string | null
+          id?: string
+          organ_donation?: boolean | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      export_logs: {
+        Row: {
+          completed_at: string | null
+          download_url: string | null
+          id: string
+          requested_at: string
+          status: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          download_url?: string | null
+          id?: string
+          requested_at?: string
+          status?: string
+          type: string
+          user_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          download_url?: string | null
+          id?: string
+          requested_at?: string
+          status?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       login_activity: {
         Row: {
           id: string
@@ -129,6 +192,45 @@ export type Database = {
           full_name?: string | null
           id?: string
           updated_at?: string | null
+        }
+        Relationships: []
+      }
+      time_capsules: {
+        Row: {
+          content: string | null
+          created_at: string
+          description: string | null
+          id: string
+          is_locked: boolean
+          lock_until: string
+          storage_path: string | null
+          title: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          content?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_locked?: boolean
+          lock_until: string
+          storage_path?: string | null
+          title: string
+          type: string
+          user_id: string
+        }
+        Update: {
+          content?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_locked?: boolean
+          lock_until?: string
+          storage_path?: string | null
+          title?: string
+          type?: string
+          user_id?: string
         }
         Relationships: []
       }

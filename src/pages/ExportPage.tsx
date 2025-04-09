@@ -15,7 +15,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { 
   Download, 
-  FileZip, 
+  Archive, 
   FileText, 
   ShieldCheck, 
   CheckCircle, 
@@ -37,9 +37,9 @@ interface ExportLog {
   id: string;
   user_id: string;
   type: 'zip' | 'pdf';
-  download_url: string;
+  download_url: string | null;
   requested_at: string;
-  completed_at?: string;
+  completed_at?: string | null;
   status: 'pending' | 'completed' | 'failed';
 }
 
@@ -158,7 +158,7 @@ const ExportPage: React.FC = () => {
                   <Card>
                     <CardHeader>
                       <CardTitle className="text-lg flex items-center">
-                        <FileZip className="h-5 w-5 mr-2 text-blue-500" />
+                        <Archive className="h-5 w-5 mr-2 text-blue-500" />
                         ZIP Archive Backup
                       </CardTitle>
                       <CardDescription>
@@ -319,7 +319,7 @@ const ExportPage: React.FC = () => {
                     <div key={log.id} className="flex items-center justify-between p-4 border rounded-md">
                       <div className="flex items-center">
                         {log.type === 'zip' ? (
-                          <FileZip className="h-5 w-5 mr-3 text-blue-500" />
+                          <Archive className="h-5 w-5 mr-3 text-blue-500" />
                         ) : (
                           <FileText className="h-5 w-5 mr-3 text-amber-500" />
                         )}
@@ -334,7 +334,7 @@ const ExportPage: React.FC = () => {
                         size="sm" 
                         variant="outline"
                         disabled={log.status !== 'completed'}
-                        onClick={() => window.open(log.download_url, '_blank')}
+                        onClick={() => window.open(log.download_url || '', '_blank')}
                       >
                         <Download className="h-4 w-4 mr-1" />
                         Download
