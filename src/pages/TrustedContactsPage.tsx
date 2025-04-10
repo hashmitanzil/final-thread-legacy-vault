@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -79,6 +80,7 @@ import {
   Lock,
   Eye
 } from 'lucide-react';
+import { TrustedContact } from '@/types/supabase-extensions';
 
 const TrustedContactsPage = () => {
   return (

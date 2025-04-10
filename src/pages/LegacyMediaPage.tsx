@@ -4,6 +4,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
+import { PostgrestError } from '@supabase/supabase-js';
+import { LegacyMedia } from '@/types/supabase-extensions';
 import {
   Card,
   CardContent,
@@ -84,8 +86,6 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import FileUpload from '@/components/FileUpload';
-import { LegacyMedia } from '@/types/supabase-extensions';
-import { PostgrestError } from '@supabase/supabase-js';
 
 type GenericRecord = Record<string, any>;
 
@@ -98,6 +98,23 @@ const mediaFormSchema = z.object({
   delivery_event: z.string().optional().nullable(),
   recipients: z.array(z.string().email()).min(1, 'At least one recipient is required'),
 });
+
+type LegacyMediaData = {
+  user_id: string;
+  title: string;
+  description: string | null;
+  media_type: 'video' | 'audio';
+  storage_path: string;
+  thumbnail_path: string | null;
+  delivery_type: 'date' | 'event' | 'post-death';
+  delivery_date: string | null;
+  delivery_event: string | null;
+  is_draft: boolean;
+  recipients: string[];
+  id?: string;
+  created_at?: string;
+  updated_at?: string;
+};
 
 const LegacyMediaPage: React.FC = () => {
   const { user, isLoading: authLoading } = useAuth();
@@ -136,14 +153,14 @@ const LegacyMediaPage: React.FC = () => {
     queryFn: async () => {
       if (!user) return [];
       
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from('legacy_media')
         .select('*')
         .eq('user_id', user.id)
-        .order('created_at', { ascending: false }) as { data: LegacyMedia[] | null, error: PostgrestError | null };
+        .order('created_at', { ascending: false });
         
       if (error) throw error;
-      return data || [];
+      return data as LegacyMedia[];
     },
     enabled: !!user,
   });
@@ -152,21 +169,23 @@ const LegacyMediaPage: React.FC = () => {
     mutationFn: async (data: z.infer<typeof mediaFormSchema> & { filePath: string }) => {
       if (!user) throw new Error('Not authenticated');
       
-      const { error } = await supabase
+      const legacyMediaData: LegacyMediaData = {
+        user_id: user.id,
+        title: data.title,
+        description: data.description || null,
+        media_type: data.media_type,
+        storage_path: data.filePath,
+        thumbnail_path: null,
+        delivery_type: data.delivery_type,
+        delivery_date: data.delivery_date ? data.delivery_date.toISOString() : null,
+        delivery_event: data.delivery_event || null,
+        is_draft: true,
+        recipients: data.recipients,
+      };
+      
+      const { error } = await (supabase as any)
         .from('legacy_media')
-        .insert({
-          user_id: user.id,
-          title: data.title,
-          description: data.description || null,
-          media_type: data.media_type,
-          storage_path: data.filePath,
-          thumbnail_path: null,
-          delivery_type: data.delivery_type,
-          delivery_date: data.delivery_date ? data.delivery_date.toISOString() : null,
-          delivery_event: data.delivery_event || null,
-          is_draft: true,
-          recipients: data.recipients,
-        } as GenericRecord);
+        .insert(legacyMediaData);
         
       if (error) throw error;
     },
@@ -197,7 +216,7 @@ const LegacyMediaPage: React.FC = () => {
       
       if (storageError) throw storageError;
       
-      const { error: dbError } = await supabase
+      const { error: dbError } = await (supabase as any)
         .from('legacy_media')
         .delete()
         .eq('id', media.id);
@@ -225,9 +244,9 @@ const LegacyMediaPage: React.FC = () => {
   
   const publishMediaMutation = useMutation({
     mutationFn: async (media: LegacyMedia) => {
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from('legacy_media')
-        .update({ is_draft: false } as GenericRecord)
+        .update({ is_draft: false })
         .eq('id', media.id);
         
       if (error) throw error;

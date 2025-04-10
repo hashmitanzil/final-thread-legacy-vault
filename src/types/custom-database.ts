@@ -1,9 +1,11 @@
 
-import { Database } from './database';
+import { Database as OriginalDatabase } from '@/integrations/supabase/types';
+import { PostgrestError } from '@supabase/supabase-js';
+import { LegacyMedia, DigitalAsset, TrustedContact } from './supabase-extensions';
 
 // Extended database type to include tables not in the original definitions
-export interface ExtendedDatabase extends Database {
-  Tables: Database['Tables'] & {
+export interface ExtendedDatabase extends OriginalDatabase {
+  Tables: OriginalDatabase['Tables'] & {
     legacy_media: {
       Row: {
         id: string;
@@ -57,10 +59,6 @@ export interface ExtendedDatabase extends Database {
   };
 }
 
-// Create a type-safe client using the extended database type
-export type CustomSupabaseClient = ReturnType<typeof createClient<ExtendedDatabase>>;
-
-// Helper function to create the client (not used directly)
-function createClient<T>() {
-  return {} as any;
-}
+// Create a custom Supabase client type
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
+export type CustomSupabaseClient = SupabaseClient<ExtendedDatabase>;

@@ -81,7 +81,7 @@ export default function DigitalAssetVaultPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [activeCategory, setActiveCategory] = useState<string>('all');
 
-  // Use a more generic approach for database queries
+  // Fetch digital assets with proper typing
   const { data: assets = [], isLoading } = useQuery({
     queryKey: ['digitalAssets', user?.id, searchTerm, activeCategory],
     queryFn: async () => {
@@ -102,10 +102,7 @@ export default function DigitalAssetVaultPage() {
         query = query.ilike('name', `%${searchTerm}%`);
       }
       
-      const { data, error } = await query.order('created_at', { ascending: false }) as { 
-        data: DigitalAsset[] | null, 
-        error: PostgrestError | null 
-      };
+      const { data, error } = await query.order('created_at', { ascending: false });
       
       if (error) throw error;
       return data || [];
