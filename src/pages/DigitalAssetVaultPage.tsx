@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -82,10 +81,10 @@ export default function DigitalAssetVaultPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [activeCategory, setActiveCategory] = useState<string>('all');
 
-  // Fetch digital assets with proper typing
+  // Fetch digital assets with explicit typing to avoid deep type instantiation
   const { data: assets = [], isLoading } = useQuery({
     queryKey: ['digitalAssets', user?.id, searchTerm, activeCategory],
-    queryFn: async () => {
+    queryFn: async (): Promise<DigitalAsset[]> => {
       if (!user) return [];
       
       let query = supabase
@@ -107,7 +106,6 @@ export default function DigitalAssetVaultPage() {
       
       if (error) throw error;
       
-      // Explicitly cast the result to DigitalAsset[] to avoid type inference issues
       return (data || []) as DigitalAsset[];
     },
     enabled: !!user,
