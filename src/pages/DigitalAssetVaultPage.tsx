@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -82,36 +81,42 @@ export default function DigitalAssetVaultPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [activeCategory, setActiveCategory] = useState<string>('all');
 
-  // Fetch digital assets with type assertion to avoid deep type instantiation
+  // Fetch digital assets with a simpler approach to avoid deep type instantiation
   const { data: assets = [], isLoading } = useQuery({
     queryKey: ['digitalAssets', user?.id, searchTerm, activeCategory],
     queryFn: async () => {
       if (!user) return [] as DigitalAsset[];
       
-      // Use type assertion to bypass TypeScript's deep type checking
-      const baseQuery = supabase
+      // First step: Create a basic query - no chaining yet to avoid deep typing issues
+      let { data, error } = await supabase
         .from('digital_assets')
         .select('*')
-        .eq('user_id', user.id);
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
       
-      // Apply category filter if one is selected
-      let query = baseQuery;
-      if (activeCategory && activeCategory !== 'all') {
-        query = query.eq('category', activeCategory);
-      }
-      
-      // Apply search if there's a search term
-      if (searchTerm) {
-        query = query.ilike('name', `%${searchTerm}%`);
-      }
-      
-      // Execute the query
-      const { data, error } = await query.order('created_at', { ascending: false });
-      
+      // Handle initial query error
       if (error) throw error;
       
-      // Type assertion here after receiving the data
-      return (data || []) as DigitalAsset[];
+      // Filter the data in memory instead of chaining query methods
+      // This avoids the TypeScript deep instantiation problem
+      let filteredData = data || [];
+      
+      // Apply category filter if needed
+      if (activeCategory && activeCategory !== 'all') {
+        filteredData = filteredData.filter(asset => 
+          asset.category === activeCategory
+        );
+      }
+      
+      // Apply search filter if needed
+      if (searchTerm) {
+        filteredData = filteredData.filter(asset => 
+          asset.name.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+      }
+      
+      // Cast the result to the expected type
+      return filteredData as DigitalAsset[];
     },
     enabled: !!user,
   });
