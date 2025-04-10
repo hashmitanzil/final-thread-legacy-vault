@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -105,7 +106,7 @@ export default function DigitalAssetVaultPage() {
       const { data, error } = await query.order('created_at', { ascending: false });
       
       if (error) throw error;
-      return data || [];
+      return (data || []) as DigitalAsset[];
     },
     enabled: !!user,
   });

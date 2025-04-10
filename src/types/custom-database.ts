@@ -4,8 +4,8 @@ import { PostgrestError } from '@supabase/supabase-js';
 import { LegacyMedia, DigitalAsset, TrustedContact } from './supabase-extensions';
 
 // Extended database type to include tables not in the original definitions
-export interface ExtendedDatabase extends OriginalDatabase {
-  Tables: OriginalDatabase['Tables'] & {
+export interface ExtendedDatabase {
+  Tables: {
     legacy_media: {
       Row: {
         id: string;
@@ -56,7 +56,13 @@ export interface ExtendedDatabase extends OriginalDatabase {
         updated_at?: string;
       };
     };
-  };
+    // Include original tables from OriginalDatabase if needed
+    // ...
+  } & OriginalDatabase['public']['Tables'];
+  Views: OriginalDatabase['public']['Views'];
+  Functions: OriginalDatabase['public']['Functions'];
+  Enums: OriginalDatabase['public']['Enums'];
+  CompositeTypes: OriginalDatabase['public']['CompositeTypes'];
 }
 
 // Create a custom Supabase client type
