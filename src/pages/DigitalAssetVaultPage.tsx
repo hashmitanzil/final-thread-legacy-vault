@@ -106,6 +106,8 @@ export default function DigitalAssetVaultPage() {
       const { data, error } = await query.order('created_at', { ascending: false });
       
       if (error) throw error;
+      
+      // Explicitly cast the result to DigitalAsset[] to avoid type inference issues
       return (data || []) as DigitalAsset[];
     },
     enabled: !!user,
