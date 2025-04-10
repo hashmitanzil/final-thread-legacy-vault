@@ -7,7 +7,12 @@ import TheaIntro from './TheaIntro';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const Thea: React.FC = () => {
-  const { isMinimized, isIntroShown, currentSection } = useThea();
+  const { isMinimized, isIntroShown, currentSection, scrollTriggers } = useThea();
+  
+  // Find the active trigger for the current section
+  const activeTrigger = currentSection 
+    ? scrollTriggers.find(trigger => trigger.sectionId === currentSection)
+    : null;
   
   return (
     <>
