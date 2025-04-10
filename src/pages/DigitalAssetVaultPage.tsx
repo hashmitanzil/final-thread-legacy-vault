@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -81,28 +82,31 @@ export default function DigitalAssetVaultPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [activeCategory, setActiveCategory] = useState<string>('all');
 
-  // Fetch digital assets with explicit typing to avoid deep type instantiation
+  // Fetch digital assets with simplified query to avoid deep type instantiation
   const { data: assets = [], isLoading } = useQuery({
     queryKey: ['digitalAssets', user?.id, searchTerm, activeCategory],
-    queryFn: async (): Promise<DigitalAsset[]> => {
-      if (!user) return [];
+    queryFn: async () => {
+      if (!user) return [] as DigitalAsset[];
       
-      let query = supabase
+      // Using any to break the deep type instantiation
+      const query: any = supabase
         .from('digital_assets')
         .select('*')
         .eq('user_id', user.id);
         
       // Apply category filter if one is selected
       if (activeCategory && activeCategory !== 'all') {
-        query = query.eq('category', activeCategory);
+        query.eq('category', activeCategory);
       }
       
       // Apply search if there's a search term
       if (searchTerm) {
-        query = query.ilike('name', `%${searchTerm}%`);
+        query.ilike('name', `%${searchTerm}%`);
       }
       
-      const { data, error } = await query.order('created_at', { ascending: false });
+      query.order('created_at', { ascending: false });
+      
+      const { data, error } = await query;
       
       if (error) throw error;
       
