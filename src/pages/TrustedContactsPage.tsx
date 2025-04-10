@@ -80,4 +80,12 @@ import {
   Eye
 } from 'lucide-react';
 
-// Rest of the code remains unchanged
+const TrustedContactsPage = () => {
+  return (
+    <div>
+      <h1>Trusted Contacts Page</h1>
+    </div>
+  );
+};
+
+export default TrustedContactsPage;

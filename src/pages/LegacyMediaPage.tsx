@@ -85,6 +85,9 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import FileUpload from '@/components/FileUpload';
 import { LegacyMedia } from '@/types/supabase-extensions';
+import { PostgrestError } from '@supabase/supabase-js';
+
+type GenericRecord = Record<string, any>;
 
 const mediaFormSchema = z.object({
   title: z.string().min(1, 'Title is required'),
@@ -137,10 +140,10 @@ const LegacyMediaPage: React.FC = () => {
         .from('legacy_media')
         .select('*')
         .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false }) as { data: LegacyMedia[] | null, error: PostgrestError | null };
         
       if (error) throw error;
-      return data as unknown as LegacyMedia[];
+      return data || [];
     },
     enabled: !!user,
   });
@@ -163,7 +166,7 @@ const LegacyMediaPage: React.FC = () => {
           delivery_event: data.delivery_event || null,
           is_draft: true,
           recipients: data.recipients,
-        });
+        } as GenericRecord);
         
       if (error) throw error;
     },
@@ -224,7 +227,7 @@ const LegacyMediaPage: React.FC = () => {
     mutationFn: async (media: LegacyMedia) => {
       const { error } = await supabase
         .from('legacy_media')
-        .update({ is_draft: false })
+        .update({ is_draft: false } as GenericRecord)
         .eq('id', media.id);
         
       if (error) throw error;

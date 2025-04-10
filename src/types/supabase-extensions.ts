@@ -1,6 +1,4 @@
 
-// Additional types for Supabase tables that aren't in the auto-generated types
-
 export interface LegacyMedia {
   id: string;
   user_id: string;
@@ -18,50 +16,31 @@ export interface LegacyMedia {
   updated_at: string;
 }
 
-export interface DeathTrigger {
-  id: string;
-  user_id: string;
-  inactivity_days: number;
-  last_activity: string | null;
-  prompt_days: number;
-  last_prompt: string | null;
-  require_contact_verification: boolean;
-  manual_trigger: boolean;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface DigitalAssetExtended {
+export interface DigitalAsset {
   id: string;
   user_id: string;
   name: string;
-  size: string;
+  description?: string;
   type: string;
+  size: string;
   storage_path: string;
-  last_accessed: string | null;
   created_at: string;
   updated_at: string;
-  visibility: 'private' | 'post-death' | 'scheduled';
-  tags: string[];
-  folder: string;
-  scheduled_release_date: string | null;
-  watermark: boolean;
-  restrict_download: boolean;
+  last_accessed: string;
+  is_encrypted?: boolean;
+  category?: string;
+  tags?: string[];
 }
 
-export interface TrustedContactExtended {
+export interface TrustedContact {
   id: string;
   user_id: string;
   name: string;
   email: string;
-  phone: string | null;
-  relationship: string | null;
-  role: 'verifier' | 'executor' | 'heir' | 'viewer';
-  can_verify_death: boolean;
-  can_trigger_messages: boolean;
-  can_access_vault: boolean;
-  temp_password: string | null;
-  is_verified: boolean;
+  phone?: string;
+  relationship: string;
+  access_level: string;
+  status: 'pending' | 'active' | 'declined';
   created_at: string;
   updated_at: string;
 }
