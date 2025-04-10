@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -101,10 +102,11 @@ export default function DigitalAssetVaultPage() {
       // This avoids the TypeScript deep instantiation problem
       let filteredData = data || [];
       
-      // Apply category filter if needed
+      // Apply category filter if needed - checking if the property exists
       if (activeCategory && activeCategory !== 'all') {
         filteredData = filteredData.filter(asset => 
-          asset.category === activeCategory
+          // Check if 'category' exists as a key and matches activeCategory
+          'category' in asset && asset.category === activeCategory
         );
       }
       
