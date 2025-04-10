@@ -47,6 +47,8 @@ import {
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 
+type AccessLevel = 'private' | 'contacts' | 'public';
+
 const formSchema = z.object({
   funeral_notes: z.string().optional(),
   organ_donation: z.boolean().default(false),
@@ -69,7 +71,6 @@ const EndOfLifePage: React.FC = () => {
     },
   });
 
-  // Fetch existing EOL instructions
   const { data: eolInstructions, isLoading } = useQuery({
     queryKey: ['eolInstructions', user?.id],
     queryFn: async () => {
@@ -79,17 +80,23 @@ const EndOfLifePage: React.FC = () => {
         .from('eol_instructions')
         .select('*')
         .eq('user_id', user.id)
-        .single();
+        .maybeSingle();
         
-      if (error && error.code !== 'PGRST116') throw error; // PGRST116 is "no rows returned"
+      if (error) throw error;
       
       if (data) {
-        // Update form with existing data
+        const validAccessLevel: AccessLevel = 
+          data.access_level === 'private' || 
+          data.access_level === 'contacts' || 
+          data.access_level === 'public' 
+            ? data.access_level 
+            : 'private';
+            
         form.reset({
           funeral_notes: data.funeral_notes || '',
           organ_donation: data.organ_donation || false,
           final_message: data.final_message || '',
-          access_level: data.access_level || 'private',
+          access_level: validAccessLevel,
         });
       }
       
@@ -98,28 +105,32 @@ const EndOfLifePage: React.FC = () => {
     enabled: !!user,
   });
 
-  // Save EOL instructions
   const saveEOLMutation = useMutation({
     mutationFn: async (data: z.infer<typeof formSchema>) => {
       if (!user) throw new Error('Not authenticated');
       
+      const accessLevel: AccessLevel = 
+        data.access_level === 'private' || 
+        data.access_level === 'contacts' || 
+        data.access_level === 'public' 
+          ? data.access_level 
+          : 'private';
+      
       if (eolInstructions) {
-        // Update existing record
         const { error } = await supabase
           .from('eol_instructions')
           .update({
             funeral_notes: data.funeral_notes,
             organ_donation: data.organ_donation,
             final_message: data.final_message,
-            access_level: data.access_level,
+            access_level: accessLevel,
             updated_at: new Date().toISOString(),
           })
           .eq('id', eolInstructions.id);
           
         if (error) throw error;
-        return { ...eolInstructions, ...data } as EOLInstructions;
+        return { ...eolInstructions, ...data, access_level: accessLevel } as EOLInstructions;
       } else {
-        // Create new record
         const { data: newRecord, error } = await supabase
           .from('eol_instructions')
           .insert({
@@ -127,7 +138,7 @@ const EndOfLifePage: React.FC = () => {
             funeral_notes: data.funeral_notes,
             organ_donation: data.organ_donation,
             final_message: data.final_message,
-            access_level: data.access_level,
+            access_level: accessLevel,
           })
           .select()
           .single();

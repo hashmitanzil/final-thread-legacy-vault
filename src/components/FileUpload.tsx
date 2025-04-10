@@ -76,17 +76,31 @@ const FileUpload: React.FC<FileUploadProps> = ({
     const filePath = `${path ? path + '/' : ''}${fileName}`;
     
     try {
-      const { error } = await supabase.storage
+      // Track upload progress with an event listener
+      const uploadTask = supabase.storage
         .from(bucketName)
         .upload(filePath, file, {
-          upsert: true,
-          onUploadProgress: (progress) => {
-            const percent = (progress.uploadedBytes / progress.totalBytes) * 100;
-            setProgress(Math.round(percent));
-          }
+          upsert: true
         });
-        
+      
+      // Set up a manual progress tracker (since onUploadProgress is not available)
+      const progressInterval = setInterval(() => {
+        setProgress(prev => {
+          // Simulate progress until we get the actual result
+          if (prev < 90) return prev + 10;
+          return prev;
+        });
+      }, 300);
+      
+      const { error } = await uploadTask;
+      
+      // Clear the progress interval
+      clearInterval(progressInterval);
+      
       if (error) throw error;
+      
+      // Set to 100% when complete
+      setProgress(100);
       
       onUploadComplete(filePath, file.name, file.size);
       
