@@ -5,6 +5,8 @@ import Footer from './Footer';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { User } from '@supabase/supabase-js';
+import { TheaProvider } from '@/contexts/TheaContext';
+import Thea from './Thea/Thea';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -37,17 +39,20 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   };
 
   return (
-    <div className="flex flex-col min-h-screen">
-      <Navigation 
-        user={formattedUser} 
-        onLogin={handleLogin} 
-        onLogout={handleLogout} 
-      />
-      <main className="flex-1">
-        {children}
-      </main>
-      <Footer />
-    </div>
+    <TheaProvider>
+      <div className="flex flex-col min-h-screen">
+        <Navigation 
+          user={formattedUser} 
+          onLogin={handleLogin} 
+          onLogout={handleLogout} 
+        />
+        <main className="flex-1">
+          {children}
+        </main>
+        <Footer />
+        <Thea />
+      </div>
+    </TheaProvider>
   );
 };
 

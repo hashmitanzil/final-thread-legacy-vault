@@ -1,4 +1,3 @@
-
 import React, { useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -143,7 +142,7 @@ const HomePage: React.FC = () => {
       </section>
 
       {/* Features Section */}
-      <section ref={featuresRef} className="py-16 md:py-24 bg-gray-900 text-white">
+      <section id="features-section" ref={featuresRef} className="py-16 md:py-24 bg-gray-900 text-white">
         <div className="container mx-auto px-4">
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
@@ -249,7 +248,7 @@ const HomePage: React.FC = () => {
       </section>
 
       {/* How it Works */}
-      <section className="py-16 md:py-24 bg-gray-800 text-white relative overflow-hidden">
+      <section id="how-it-works" className="py-16 md:py-24 bg-gray-800 text-white relative overflow-hidden">
         <div className="absolute inset-0 bg-grid-pattern opacity-5"></div>
         
         <div className="container mx-auto px-4 relative z-10">
@@ -333,7 +332,7 @@ const HomePage: React.FC = () => {
       </section>
 
       {/* Testimonials */}
-      <section className="py-16 md:py-24 bg-gray-900 text-white">
+      <section id="testimonials" className="py-16 md:py-24 bg-gray-900 text-white">
         <div className="container mx-auto px-4">
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
@@ -413,7 +412,7 @@ const HomePage: React.FC = () => {
       </section>
 
       {/* CTA Section */}
-      <section className="py-16 md:py-24 bg-gradient-to-b from-purple-900 to-gray-900 text-white">
+      <section id="cta-section" className="py-16 md:py-24 bg-gradient-to-b from-purple-900 to-gray-900 text-white">
         <div className="container mx-auto px-4">
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
