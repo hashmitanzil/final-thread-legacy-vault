@@ -67,9 +67,26 @@ import {
   Plus,
   Search,
 } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
 
 // Generic approach for database operations
 type GenericRecord = Record<string, any>;
+
+// Form schema for creating and editing assets
+const assetFormSchema = z.object({
+  name: z.string().min(1, "Name is required"),
+  description: z.string().optional(),
+  type: z.string().min(1, "Type is required"),
+  size: z.string().min(1, "Size is required"),
+  category: z.string().min(1, "Category is required"),
+  is_encrypted: z.boolean().default(false),
+});
+
+type AssetFormValues = z.infer<typeof assetFormSchema>;
 
 export default function DigitalAssetVaultPage() {
   const { user } = useAuth();
@@ -81,6 +98,32 @@ export default function DigitalAssetVaultPage() {
   const [selectedAsset, setSelectedAsset] = useState<DigitalAsset | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [activeCategory, setActiveCategory] = useState<string>('all');
+
+  // Create form
+  const createForm = useForm<AssetFormValues>({
+    resolver: zodResolver(assetFormSchema),
+    defaultValues: {
+      name: '',
+      description: '',
+      type: '',
+      size: '',
+      category: 'documents',
+      is_encrypted: false,
+    },
+  });
+
+  // Edit form
+  const editForm = useForm<AssetFormValues>({
+    resolver: zodResolver(assetFormSchema),
+    defaultValues: {
+      name: '',
+      description: '',
+      type: '',
+      size: '',
+      category: 'documents',
+      is_encrypted: false,
+    },
+  });
 
   // Fetch digital assets with a simpler approach to avoid deep type instantiation
   const { data: assets = [], isLoading } = useQuery({
@@ -123,22 +166,148 @@ export default function DigitalAssetVaultPage() {
     enabled: !!user,
   });
 
+  // Create asset mutation
+  const createAssetMutation = useMutation({
+    mutationFn: async (data: AssetFormValues) => {
+      if (!user) throw new Error("Not authenticated");
+      
+      const newAsset = {
+        user_id: user.id,
+        name: data.name,
+        description: data.description || null,
+        type: data.type,
+        size: data.size,
+        category: data.category,
+        is_encrypted: data.is_encrypted,
+        storage_path: `assets/${user.id}/${Date.now()}_${data.name}`,
+        last_accessed: new Date().toISOString(),
+      };
+      
+      const { error } = await supabase
+        .from('digital_assets')
+        .insert(newAsset);
+        
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['digitalAssets'] });
+      toast({
+        title: "Asset created",
+        description: "Digital asset has been created successfully.",
+      });
+      setIsCreateDialogOpen(false);
+      createForm.reset();
+    },
+    onError: (error) => {
+      console.error("Error creating asset:", error);
+      toast({
+        title: "Error",
+        description: "Failed to create digital asset.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Update asset mutation
+  const updateAssetMutation = useMutation({
+    mutationFn: async (data: AssetFormValues) => {
+      if (!selectedAsset) throw new Error("No asset selected");
+      
+      const updatedAsset = {
+        name: data.name,
+        description: data.description || null,
+        type: data.type,
+        size: data.size,
+        category: data.category,
+        is_encrypted: data.is_encrypted,
+        updated_at: new Date().toISOString(),
+      };
+      
+      const { error } = await supabase
+        .from('digital_assets')
+        .update(updatedAsset)
+        .eq('id', selectedAsset.id);
+        
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['digitalAssets'] });
+      toast({
+        title: "Asset updated",
+        description: "Digital asset has been updated successfully.",
+      });
+      setIsEditDialogOpen(false);
+      setSelectedAsset(null);
+      editForm.reset();
+    },
+    onError: (error) => {
+      console.error("Error updating asset:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update digital asset.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Delete asset mutation
+  const deleteAssetMutation = useMutation({
+    mutationFn: async () => {
+      if (!selectedAsset) throw new Error("No asset selected");
+      
+      const { error } = await supabase
+        .from('digital_assets')
+        .delete()
+        .eq('id', selectedAsset.id);
+        
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['digitalAssets'] });
+      toast({
+        title: "Asset deleted",
+        description: "Digital asset has been deleted successfully.",
+      });
+      setIsDeleteDialogOpen(false);
+      setSelectedAsset(null);
+    },
+    onError: (error) => {
+      console.error("Error deleting asset:", error);
+      toast({
+        title: "Error",
+        description: "Failed to delete digital asset.",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleCreateDialogOpen = () => {
+    createForm.reset();
     setIsCreateDialogOpen(true);
   };
 
   const handleCreateDialogClose = () => {
     setIsCreateDialogOpen(false);
+    createForm.reset();
   };
 
   const handleEditDialogOpen = (asset: DigitalAsset) => {
     setSelectedAsset(asset);
+    editForm.reset({
+      name: asset.name,
+      description: asset.description || '',
+      type: asset.type,
+      size: asset.size,
+      category: asset.category || 'documents',
+      is_encrypted: asset.is_encrypted || false,
+    });
     setIsEditDialogOpen(true);
   };
 
   const handleEditDialogClose = () => {
     setIsEditDialogOpen(false);
     setSelectedAsset(null);
+    editForm.reset();
   };
 
   const handleDeleteDialogOpen = (asset: DigitalAsset) => {
@@ -157,6 +326,14 @@ export default function DigitalAssetVaultPage() {
 
   const handleCategoryChange = (category: string) => {
     setActiveCategory(category);
+  };
+
+  const onCreateSubmit = (data: AssetFormValues) => {
+    createAssetMutation.mutate(data);
+  };
+
+  const onEditSubmit = (data: AssetFormValues) => {
+    updateAssetMutation.mutate(data);
   };
 
   return (
@@ -231,6 +408,7 @@ export default function DigitalAssetVaultPage() {
               <TableRow>
                 <TableHead>Name</TableHead>
                 <TableHead>Type</TableHead>
+                <TableHead>Category</TableHead>
                 <TableHead>Size</TableHead>
                 <TableHead>Last Accessed</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
@@ -239,10 +417,20 @@ export default function DigitalAssetVaultPage() {
             <TableBody>
               {assets.map((asset) => (
                 <TableRow key={asset.id}>
-                  <TableCell className="font-medium">{asset.name}</TableCell>
+                  <TableCell className="font-medium">
+                    <div className="flex items-center">
+                      {asset.is_encrypted ? <Lock className="h-4 w-4 mr-2 text-green-500" /> : null}
+                      {asset.name}
+                    </div>
+                  </TableCell>
                   <TableCell>{asset.type}</TableCell>
+                  <TableCell>{asset.category || 'Uncategorized'}</TableCell>
                   <TableCell>{asset.size}</TableCell>
-                  <TableCell>{format(new Date(asset.last_accessed), 'MMM dd, yyyy')}</TableCell>
+                  <TableCell>
+                    {asset.last_accessed 
+                      ? format(new Date(asset.last_accessed), 'MMM dd, yyyy') 
+                      : 'Never'}
+                  </TableCell>
                   <TableCell className="text-right">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
@@ -280,73 +468,267 @@ export default function DigitalAssetVaultPage() {
 
       {/* Create Asset Dialog */}
       <Dialog open={isCreateDialogOpen} onOpenChange={handleCreateDialogClose}>
-        <DialogContent className="sm:max-w-[425px]">
+        <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
             <DialogTitle>Create Digital Asset</DialogTitle>
             <DialogDescription>
               Add a new digital asset to your vault.
             </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="name" className="text-right">
-                Name
-              </Label>
-              <Input id="name" value="" className="col-span-3" />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="type" className="text-right">
-                Type
-              </Label>
-              <Input id="type" value="" className="col-span-3" />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="size" className="text-right">
-                Size
-              </Label>
-              <Input id="size" value="" className="col-span-3" />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button type="submit">Create</Button>
-          </DialogFooter>
+          <Form {...createForm}>
+            <form onSubmit={createForm.handleSubmit(onCreateSubmit)} className="space-y-4">
+              <FormField
+                control={createForm.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Name</FormLabel>
+                    <FormControl>
+                      <Input {...field} placeholder="Asset name" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={createForm.control}
+                name="description"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Description</FormLabel>
+                    <FormControl>
+                      <Textarea {...field} placeholder="Asset description" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={createForm.control}
+                  name="type"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Type</FormLabel>
+                      <FormControl>
+                        <Input {...field} placeholder="File type" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={createForm.control}
+                  name="size"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Size</FormLabel>
+                      <FormControl>
+                        <Input {...field} placeholder="File size" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+              
+              <FormField
+                control={createForm.control}
+                name="category"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Category</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select a category" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="documents">Documents</SelectItem>
+                        <SelectItem value="images">Images</SelectItem>
+                        <SelectItem value="videos">Videos</SelectItem>
+                        <SelectItem value="other">Other</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={createForm.control}
+                name="is_encrypted"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                    <FormControl>
+                      <input
+                        type="checkbox"
+                        checked={field.value}
+                        onChange={field.onChange}
+                        className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                      />
+                    </FormControl>
+                    <div className="space-y-1 leading-none">
+                      <FormLabel>Encrypt asset</FormLabel>
+                      <FormDescription>
+                        Enable encryption for this digital asset
+                      </FormDescription>
+                    </div>
+                  </FormItem>
+                )}
+              />
+              
+              <DialogFooter>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleCreateDialogClose}
+                >
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={createAssetMutation.isPending}>
+                  {createAssetMutation.isPending ? "Creating..." : "Create Asset"}
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
         </DialogContent>
       </Dialog>
 
       {/* Edit Asset Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={handleEditDialogClose}>
-        <DialogContent className="sm:max-w-[425px]">
+        <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
             <DialogTitle>Edit Digital Asset</DialogTitle>
             <DialogDescription>
               Make changes to the selected digital asset.
             </DialogDescription>
           </DialogHeader>
-          {selectedAsset && (
-            <div className="grid gap-4 py-4">
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="name" className="text-right">
-                  Name
-                </Label>
-                <Input id="name" defaultValue={selectedAsset.name} className="col-span-3" />
+          <Form {...editForm}>
+            <form onSubmit={editForm.handleSubmit(onEditSubmit)} className="space-y-4">
+              <FormField
+                control={editForm.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Name</FormLabel>
+                    <FormControl>
+                      <Input {...field} placeholder="Asset name" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={editForm.control}
+                name="description"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Description</FormLabel>
+                    <FormControl>
+                      <Textarea {...field} placeholder="Asset description" value={field.value || ''} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={editForm.control}
+                  name="type"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Type</FormLabel>
+                      <FormControl>
+                        <Input {...field} placeholder="File type" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={editForm.control}
+                  name="size"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Size</FormLabel>
+                      <FormControl>
+                        <Input {...field} placeholder="File size" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
               </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="type" className="text-right">
-                  Type
-                </Label>
-                <Input id="type" defaultValue={selectedAsset.type} className="col-span-3" />
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="size" className="text-right">
-                  Size
-                </Label>
-                <Input id="size" defaultValue={selectedAsset.size} className="col-span-3" />
-              </div>
-            </div>
-          )}
-          <DialogFooter>
-            <Button type="submit">Save changes</Button>
-          </DialogFooter>
+              
+              <FormField
+                control={editForm.control}
+                name="category"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Category</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select a category" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="documents">Documents</SelectItem>
+                        <SelectItem value="images">Images</SelectItem>
+                        <SelectItem value="videos">Videos</SelectItem>
+                        <SelectItem value="other">Other</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={editForm.control}
+                name="is_encrypted"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                    <FormControl>
+                      <input
+                        type="checkbox"
+                        checked={field.value}
+                        onChange={field.onChange}
+                        className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                      />
+                    </FormControl>
+                    <div className="space-y-1 leading-none">
+                      <FormLabel>Encrypt asset</FormLabel>
+                      <FormDescription>
+                        Enable encryption for this digital asset
+                      </FormDescription>
+                    </div>
+                  </FormItem>
+                )}
+              />
+              
+              <DialogFooter>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleEditDialogClose}
+                >
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={updateAssetMutation.isPending}>
+                  {updateAssetMutation.isPending ? "Saving..." : "Save Changes"}
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
         </DialogContent>
       </Dialog>
 
@@ -359,9 +741,30 @@ export default function DigitalAssetVaultPage() {
               Are you sure you want to delete this asset? This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
+          <div>
+            {selectedAsset && (
+              <div className="py-4">
+                <p><strong>Name:</strong> {selectedAsset.name}</p>
+                <p><strong>Type:</strong> {selectedAsset.type}</p>
+                <p><strong>Category:</strong> {selectedAsset.category || 'Uncategorized'}</p>
+              </div>
+            )}
+          </div>
           <DialogFooter>
-            <Button type="submit" variant="destructive">
-              Delete
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleDeleteDialogClose}
+            >
+              Cancel
+            </Button>
+            <Button 
+              type="button" 
+              variant="destructive"
+              onClick={() => deleteAssetMutation.mutate()}
+              disabled={deleteAssetMutation.isPending}
+            >
+              {deleteAssetMutation.isPending ? "Deleting..." : "Delete Asset"}
             </Button>
           </DialogFooter>
         </DialogContent>
