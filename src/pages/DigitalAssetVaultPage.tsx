@@ -82,34 +82,35 @@ export default function DigitalAssetVaultPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [activeCategory, setActiveCategory] = useState<string>('all');
 
-  // Fetch digital assets with simplified query to avoid deep type instantiation
+  // Fetch digital assets with type assertion to avoid deep type instantiation
   const { data: assets = [], isLoading } = useQuery({
     queryKey: ['digitalAssets', user?.id, searchTerm, activeCategory],
     queryFn: async () => {
       if (!user) return [] as DigitalAsset[];
       
-      // Using any to break the deep type instantiation
-      const query: any = supabase
+      // Use type assertion to bypass TypeScript's deep type checking
+      const baseQuery = supabase
         .from('digital_assets')
         .select('*')
         .eq('user_id', user.id);
-        
+      
       // Apply category filter if one is selected
+      let query = baseQuery;
       if (activeCategory && activeCategory !== 'all') {
-        query.eq('category', activeCategory);
+        query = query.eq('category', activeCategory);
       }
       
       // Apply search if there's a search term
       if (searchTerm) {
-        query.ilike('name', `%${searchTerm}%`);
+        query = query.ilike('name', `%${searchTerm}%`);
       }
       
-      query.order('created_at', { ascending: false });
-      
-      const { data, error } = await query;
+      // Execute the query
+      const { data, error } = await query.order('created_at', { ascending: false });
       
       if (error) throw error;
       
+      // Type assertion here after receiving the data
       return (data || []) as DigitalAsset[];
     },
     enabled: !!user,
