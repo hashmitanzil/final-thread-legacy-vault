@@ -1,4 +1,3 @@
-
 import React, { useState, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -65,7 +64,7 @@ import {
   MoreVertical,
   Trash2,
   Edit,
-  Eye,
+  Eye as EyeIcon,
   Save,
   PlayCircle,
   PauseCircle,
@@ -85,23 +84,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import FileUpload from '@/components/FileUpload';
-
-interface LegacyMedia {
-  id: string;
-  user_id: string;
-  title: string;
-  description: string | null;
-  media_type: 'video' | 'audio';
-  storage_path: string;
-  thumbnail_path: string | null;
-  delivery_type: 'date' | 'event' | 'post-death';
-  delivery_date: string | null;
-  delivery_event: string | null;
-  is_draft: boolean;
-  recipients: string[];
-  created_at: string;
-  updated_at: string;
-}
+import { LegacyMedia } from '@/types/supabase-extensions';
 
 const mediaFormSchema = z.object({
   title: z.string().min(1, 'Title is required'),
@@ -151,6 +134,7 @@ const LegacyMediaPage: React.FC = () => {
     queryFn: async () => {
       if (!user) return [];
       
+      // This query syntax works with any table even if not in the TypeScript definitions
       const { data, error } = await supabase
         .from('legacy_media')
         .select('*')
@@ -158,7 +142,7 @@ const LegacyMediaPage: React.FC = () => {
         .order('created_at', { ascending: false });
         
       if (error) throw error;
-      return data as LegacyMedia[];
+      return data as unknown as LegacyMedia[];
     },
     enabled: !!user,
   });
@@ -168,6 +152,7 @@ const LegacyMediaPage: React.FC = () => {
     mutationFn: async (data: z.infer<typeof mediaFormSchema> & { filePath: string }) => {
       if (!user) throw new Error('Not authenticated');
       
+      // Use generic syntax instead of typed syntax
       const { error } = await supabase
         .from('legacy_media')
         .insert({
@@ -215,7 +200,7 @@ const LegacyMediaPage: React.FC = () => {
       
       if (storageError) throw storageError;
       
-      // Delete metadata from database
+      // Delete metadata from database using generic syntax
       const { error: dbError } = await supabase
         .from('legacy_media')
         .delete()
@@ -348,12 +333,13 @@ const LegacyMediaPage: React.FC = () => {
   const stopRecording = () => {
     if (mediaRecorderRef.current && isRecording) {
       mediaRecorderRef.current.stop();
-      mediaRecorderRef.current = null;
-      setIsRecording(false);
       
       // Stop all tracks in the stream
-      const tracks = mediaRecorderRef.current?.stream?.getTracks();
+      const tracks = mediaRecorderRef.current.stream?.getTracks();
       tracks?.forEach(track => track.stop());
+      
+      mediaRecorderRef.current = null;
+      setIsRecording(false);
     }
   };
   
@@ -572,7 +558,7 @@ const LegacyMediaPage: React.FC = () => {
                       size="sm"
                       onClick={() => handleViewMedia(media)}
                     >
-                      <Eye className="h-4 w-4 mr-2" />
+                      <EyeIcon className="h-4 w-4 mr-2" />
                       View
                     </Button>
                     
@@ -605,7 +591,6 @@ const LegacyMediaPage: React.FC = () => {
         </CardContent>
       </Card>
       
-      {/* Create Message Dialog */}
       <Dialog open={isCreateDialogOpen} onOpenChange={(open) => {
         setIsCreateDialogOpen(open);
         if (!open) {
@@ -898,7 +883,6 @@ const LegacyMediaPage: React.FC = () => {
         </DialogContent>
       </Dialog>
       
-      {/* View Message Dialog */}
       <Dialog open={isViewDialogOpen} onOpenChange={(open) => {
         setIsViewDialogOpen(open);
         if (!open) {
@@ -970,77 +954,4 @@ const LegacyMediaPage: React.FC = () => {
               
               <div className="relative aspect-video bg-black rounded-md overflow-hidden flex items-center justify-center">
                 {viewUrl ? (
-                  viewingMedia.media_type === 'video' ? (
-                    <video 
-                      ref={videoRef}
-                      src={viewUrl} 
-                      className="max-w-full max-h-full" 
-                      controls={false}
-                      onEnded={() => setIsPlaying(false)}
-                    />
-                  ) : (
-                    <>
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <Mic className="h-20 w-20 text-muted-foreground/30" />
-                      </div>
-                      <audio 
-                        ref={audioRef}
-                        src={viewUrl} 
-                        className="hidden" 
-                        controls={false}
-                        onEnded={() => setIsPlaying(false)}
-                      />
-                    </>
-                  )
-                ) : (
-                  <div className="text-white animate-pulse">Loading media...</div>
-                )}
-                
-                <button 
-                  className="absolute inset-0 flex items-center justify-center bg-black/30 hover:bg-black/40 transition-colors"
-                  onClick={handlePlayPause}
-                  disabled={!viewUrl}
-                >
-                  {isPlaying ? (
-                    <PauseCircle className="h-16 w-16 text-white" />
-                  ) : (
-                    <PlayCircle className="h-16 w-16 text-white" />
-                  )}
-                </button>
-              </div>
-            </div>
-            
-            <DialogFooter className="flex justify-between items-center">
-              <div>
-                {viewingMedia.is_draft && (
-                  <Button 
-                    onClick={() => publishMediaMutation.mutate(viewingMedia)}
-                    className="mr-2"
-                  >
-                    <CheckCircle className="h-4 w-4 mr-2" />
-                    Publish
-                  </Button>
-                )}
-              </div>
-              
-              <div className="flex gap-2">
-                <Button 
-                  variant="destructive"
-                  onClick={() => deleteMediaMutation.mutate(viewingMedia)}
-                >
-                  <Trash2 className="h-4 w-4 mr-2" />
-                  Delete
-                </Button>
-                <Button onClick={() => setIsViewDialogOpen(false)}>
-                  Close
-                </Button>
-              </div>
-            </DialogFooter>
-          </DialogContent>
-        )}
-      </Dialog>
-    </div>
-  );
-};
-
-export default LegacyMediaPage;
+                  viewingMedia.media_type === 'video'
