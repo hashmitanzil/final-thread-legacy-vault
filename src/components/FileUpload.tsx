@@ -6,15 +6,40 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
 import { toast } from '@/components/ui/use-toast';
-import { UploadCloud, X, FileText, Image, Film, Music, File } from 'lucide-react';
+import { UploadCloud, X, FileText, Image, Film, Music, File, Tag, Calendar, Lock } from 'lucide-react';
+import { 
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar as CalendarComponent } from '@/components/ui/calendar';
+import { format } from 'date-fns';
+
+export type FileVisibility = 'private' | 'post-death' | 'scheduled';
 
 interface FileUploadProps {
   bucketName: string;
   path?: string;
-  onUploadComplete: (filePath: string, fileName: string, fileSize: number) => void;
+  onUploadComplete: (
+    filePath: string, 
+    fileName: string, 
+    fileSize: number, 
+    visibility?: FileVisibility,
+    scheduledDate?: Date | null,
+    tags?: string[],
+    folder?: string,
+    watermark?: boolean,
+    restrictDownload?: boolean
+  ) => void;
   maxSizeMB?: number;
   acceptedFileTypes?: string[];
   className?: string;
+  showAdvancedOptions?: boolean;
 }
 
 const FileUpload: React.FC<FileUploadProps> = ({
@@ -24,11 +49,19 @@ const FileUpload: React.FC<FileUploadProps> = ({
   maxSizeMB = 50,
   acceptedFileTypes,
   className = '',
+  showAdvancedOptions = false,
 }) => {
   const { user } = useAuth();
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [visibility, setVisibility] = useState<FileVisibility>('private');
+  const [scheduledDate, setScheduledDate] = useState<Date | null>(null);
+  const [tags, setTags] = useState<string>('');
+  const [folder, setFolder] = useState('general');
+  const [watermark, setWatermark] = useState(false);
+  const [restrictDownload, setRestrictDownload] = useState(false);
+  const [showDatePicker, setShowDatePicker] = useState(false);
   
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
@@ -102,14 +135,34 @@ const FileUpload: React.FC<FileUploadProps> = ({
       // Set to 100% when complete
       setProgress(100);
       
-      onUploadComplete(filePath, file.name, file.size);
+      // Process tags
+      const tagArray = tags ? tags.split(',').map(tag => tag.trim()) : [];
+      
+      onUploadComplete(
+        filePath, 
+        file.name, 
+        file.size, 
+        visibility, 
+        visibility === 'scheduled' ? scheduledDate : null,
+        tagArray,
+        folder,
+        watermark,
+        restrictDownload
+      );
       
       toast({
         title: 'Upload complete',
         description: 'Your file has been uploaded successfully.'
       });
       
+      // Reset form
       setFile(null);
+      setVisibility('private');
+      setScheduledDate(null);
+      setTags('');
+      setFolder('general');
+      setWatermark(false);
+      setRestrictDownload(false);
     } catch (error) {
       toast({
         title: 'Upload failed',
@@ -181,8 +234,115 @@ const FileUpload: React.FC<FileUploadProps> = ({
             </Button>
           </div>
           
+          {showAdvancedOptions && (
+            <div className="space-y-4 mt-4 p-4 bg-muted/20 rounded-md">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="visibility">Visibility</Label>
+                  <Select 
+                    value={visibility} 
+                    onValueChange={(value: FileVisibility) => {
+                      setVisibility(value);
+                      if (value === 'scheduled') {
+                        setShowDatePicker(true);
+                      }
+                    }}
+                  >
+                    <SelectTrigger id="visibility">
+                      <SelectValue placeholder="Select visibility" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="private">Private (Only You)</SelectItem>
+                      <SelectItem value="post-death">Post-Death</SelectItem>
+                      <SelectItem value="scheduled">Scheduled Release</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="folder">Folder</Label>
+                  <Select value={folder} onValueChange={setFolder}>
+                    <SelectTrigger id="folder">
+                      <SelectValue placeholder="Select folder" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="general">General</SelectItem>
+                      <SelectItem value="family">Family</SelectItem>
+                      <SelectItem value="career">Career</SelectItem>
+                      <SelectItem value="travel">Travel</SelectItem>
+                      <SelectItem value="legal">Legal Documents</SelectItem>
+                      <SelectItem value="financial">Financial</SelectItem>
+                      <SelectItem value="medical">Medical</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              
+              {visibility === 'scheduled' && (
+                <div className="space-y-2">
+                  <Label>Release Date</Label>
+                  <Popover open={showDatePicker} onOpenChange={setShowDatePicker}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className="w-full justify-start text-left font-normal"
+                      >
+                        <Calendar className="mr-2 h-4 w-4" />
+                        {scheduledDate ? format(scheduledDate, 'PPP') : <span>Pick a date</span>}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0">
+                      <CalendarComponent
+                        mode="single"
+                        selected={scheduledDate || undefined}
+                        onSelect={(date) => {
+                          setScheduledDate(date);
+                          setShowDatePicker(false);
+                        }}
+                        initialFocus
+                        disabled={(date) => date < new Date()}
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+              )}
+              
+              <div className="space-y-2">
+                <Label htmlFor="tags">Tags (comma separated)</Label>
+                <div className="flex items-center">
+                  <Tag className="mr-2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    id="tags"
+                    placeholder="family, important, vacation, etc."
+                    value={tags}
+                    onChange={(e) => setTags(e.target.value)}
+                  />
+                </div>
+              </div>
+              
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center space-x-2">
+                  <Checkbox 
+                    id="watermark" 
+                    checked={watermark} 
+                    onCheckedChange={(checked) => setWatermark(checked === true)} 
+                  />
+                  <Label htmlFor="watermark" className="cursor-pointer">Apply watermark to protect content</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Checkbox 
+                    id="restrictDownload" 
+                    checked={restrictDownload} 
+                    onCheckedChange={(checked) => setRestrictDownload(checked === true)} 
+                  />
+                  <Label htmlFor="restrictDownload" className="cursor-pointer">Restrict downloading (view only)</Label>
+                </div>
+              </div>
+            </div>
+          )}
+          
           {uploading && (
-            <div className="space-y-2">
+            <div className="space-y-2 mt-4">
               <Progress value={progress} />
               <p className="text-xs text-right text-muted-foreground">{progress}%</p>
             </div>

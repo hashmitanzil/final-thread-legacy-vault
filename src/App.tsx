@@ -30,6 +30,7 @@ import HelpCenterPage from "./pages/HelpCenterPage";
 import EndOfLifePage from "./pages/EndOfLifePage";
 import TimeCapsulePage from "./pages/TimeCapsulePage";
 import ExportPage from "./pages/ExportPage";
+import LegacyMediaPage from "./pages/LegacyMediaPage";
 
 const queryClient = new QueryClient();
 
@@ -184,6 +185,16 @@ const App = () => (
                   <ProtectedRoute>
                     <MotionLayout>
                       <DigitalAssetVaultPage />
+                    </MotionLayout>
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/legacy-media" 
+                element={
+                  <ProtectedRoute>
+                    <MotionLayout>
+                      <LegacyMediaPage />
                     </MotionLayout>
                   </ProtectedRoute>
                 } 
