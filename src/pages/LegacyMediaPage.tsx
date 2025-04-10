@@ -128,13 +128,11 @@ const LegacyMediaPage: React.FC = () => {
     },
   });
   
-  // Fetch legacy media
   const { data: legacyMedia = [], isLoading } = useQuery({
     queryKey: ['legacyMedia', user?.id],
     queryFn: async () => {
       if (!user) return [];
       
-      // This query syntax works with any table even if not in the TypeScript definitions
       const { data, error } = await supabase
         .from('legacy_media')
         .select('*')
@@ -147,12 +145,10 @@ const LegacyMediaPage: React.FC = () => {
     enabled: !!user,
   });
   
-  // Create legacy media mutation
   const createMediaMutation = useMutation({
     mutationFn: async (data: z.infer<typeof mediaFormSchema> & { filePath: string }) => {
       if (!user) throw new Error('Not authenticated');
       
-      // Use generic syntax instead of typed syntax
       const { error } = await supabase
         .from('legacy_media')
         .insert({
@@ -161,7 +157,7 @@ const LegacyMediaPage: React.FC = () => {
           description: data.description || null,
           media_type: data.media_type,
           storage_path: data.filePath,
-          thumbnail_path: null, // We'll add thumbnail support later
+          thumbnail_path: null,
           delivery_type: data.delivery_type,
           delivery_date: data.delivery_date ? data.delivery_date.toISOString() : null,
           delivery_event: data.delivery_event || null,
@@ -190,17 +186,14 @@ const LegacyMediaPage: React.FC = () => {
     },
   });
   
-  // Delete legacy media mutation
   const deleteMediaMutation = useMutation({
     mutationFn: async (media: LegacyMedia) => {
-      // Delete file from storage
       const { error: storageError } = await supabase.storage
         .from('legacy_media')
         .remove([media.storage_path]);
       
       if (storageError) throw storageError;
       
-      // Delete metadata from database using generic syntax
       const { error: dbError } = await supabase
         .from('legacy_media')
         .delete()
@@ -227,7 +220,6 @@ const LegacyMediaPage: React.FC = () => {
     },
   });
   
-  // Publish media mutation (mark as not draft)
   const publishMediaMutation = useMutation({
     mutationFn: async (media: LegacyMedia) => {
       const { error } = await supabase
@@ -293,7 +285,6 @@ const LegacyMediaPage: React.FC = () => {
           type: mediaType === 'video' ? 'video/webm' : 'audio/webm',
         });
         
-        // Upload the recorded media
         const fileName = `recorded_${mediaType}_${Date.now()}.webm`;
         const filePath = `${user?.id}/${fileName}`;
         
@@ -304,7 +295,6 @@ const LegacyMediaPage: React.FC = () => {
             
           if (error) throw error;
           
-          // Get the form values and add the file path
           const formValues = form.getValues();
           await createMediaMutation.mutateAsync({
             ...formValues,
@@ -334,7 +324,6 @@ const LegacyMediaPage: React.FC = () => {
     if (mediaRecorderRef.current && isRecording) {
       mediaRecorderRef.current.stop();
       
-      // Stop all tracks in the stream
       const tracks = mediaRecorderRef.current.stream?.getTracks();
       tracks?.forEach(track => track.stop());
       
@@ -348,7 +337,6 @@ const LegacyMediaPage: React.FC = () => {
     fileName: string, 
     fileSize: number
   ) => {
-    // Get the form values and add the file path
     const formValues = form.getValues();
     await createMediaMutation.mutateAsync({
       ...formValues,
@@ -362,14 +350,12 @@ const LegacyMediaPage: React.FC = () => {
       setIsViewDialogOpen(true);
       setIsPlaying(false);
       
-      // Get temporary URL for the file
       const { data, error } = await supabase.storage
         .from('legacy_media')
-        .createSignedUrl(media.storage_path, 60); // 60 seconds expiry
+        .createSignedUrl(media.storage_path, 60);
       
       if (error) throw error;
       setViewUrl(data.signedUrl);
-      
     } catch (error) {
       console.error('Error getting media URL:', error);
       toast({
@@ -410,7 +396,6 @@ const LegacyMediaPage: React.FC = () => {
   };
   
   const onSubmit = (data: z.infer<typeof mediaFormSchema>) => {
-    // The actual submission happens in handleUploadComplete or after recording
     console.log('Form data ready for submission:', data);
   };
   
@@ -954,4 +939,81 @@ const LegacyMediaPage: React.FC = () => {
               
               <div className="relative aspect-video bg-black rounded-md overflow-hidden flex items-center justify-center">
                 {viewUrl ? (
-                  viewingMedia.media_type === 'video'
+                  viewingMedia.media_type === 'video' ? (
+                    <video 
+                      ref={videoRef}
+                      src={viewUrl}
+                      className="w-full h-full"
+                      controls={false}
+                      onClick={handlePlayPause}
+                    />
+                  ) : (
+                    <audio 
+                      ref={audioRef}
+                      src={viewUrl}
+                      className="w-full"
+                      controls={false}
+                    />
+                  )
+                ) : (
+                  <div className="animate-pulse text-white">Loading media...</div>
+                )}
+                
+                {viewUrl && (
+                  <button
+                    onClick={handlePlayPause}
+                    className="absolute inset-0 flex items-center justify-center bg-black/30 hover:bg-black/40 transition-colors"
+                  >
+                    {isPlaying ? (
+                      <PauseCircle className="h-16 w-16 text-white" />
+                    ) : (
+                      <PlayCircle className="h-16 w-16 text-white" />
+                    )}
+                  </button>
+                )}
+              </div>
+              
+              <div className="flex justify-between">
+                <Button 
+                  variant="outline"
+                  onClick={() => {
+                    setIsViewDialogOpen(false);
+                  }}
+                >
+                  Close
+                </Button>
+                
+                <div className="space-x-2">
+                  {viewingMedia.is_draft && (
+                    <Button 
+                      onClick={() => publishMediaMutation.mutate(viewingMedia)}
+                      disabled={publishMediaMutation.isPending}
+                    >
+                      <CheckCircle className="h-4 w-4 mr-2" />
+                      {publishMediaMutation.isPending ? 'Publishing...' : 'Publish Message'}
+                    </Button>
+                  )}
+                  
+                  <Button 
+                    variant="destructive"
+                    onClick={() => {
+                      if (confirm('Are you sure you want to delete this message?')) {
+                        deleteMediaMutation.mutate(viewingMedia);
+                      }
+                    }}
+                    disabled={deleteMediaMutation.isPending}
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    {deleteMediaMutation.isPending ? 'Deleting...' : 'Delete'}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </DialogContent>
+        )}
+      </Dialog>
+    </div>
+  );
+};
+
+export default LegacyMediaPage;
