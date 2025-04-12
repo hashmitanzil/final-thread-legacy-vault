@@ -187,41 +187,41 @@ const Navigation: React.FC<NavigationProps> = ({ user, onLogin, onLogout }) => {
                   </AvatarFallback>
                 </Avatar>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-lg">
+              <DropdownMenuContent align="end" className="w-56 dropdown-menu-content z-50">
                 <DropdownMenuLabel className="font-semibold">My Account</DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem asChild className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700">
+                <DropdownMenuItem asChild className="nav-dropdown-item">
                   <Link to="/dashboard" className="flex items-center w-full">
                     <Home className="mr-2 h-4 w-4" />
                     <span>Dashboard</span>
                   </Link>
                 </DropdownMenuItem>
-                <DropdownMenuItem asChild className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700">
+                <DropdownMenuItem asChild className="nav-dropdown-item">
                   <Link to="/messages" className="flex items-center w-full">
                     <MessageSquare className="mr-2 h-4 w-4" />
                     <span>Messages</span>
                   </Link>
                 </DropdownMenuItem>
-                <DropdownMenuItem asChild className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700">
+                <DropdownMenuItem asChild className="nav-dropdown-item">
                   <Link to="/trusted-contacts" className="flex items-center w-full">
                     <Users className="mr-2 h-4 w-4" />
                     <span>Trusted Contacts</span>
                   </Link>
                 </DropdownMenuItem>
-                <DropdownMenuItem asChild className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700">
+                <DropdownMenuItem asChild className="nav-dropdown-item">
                   <Link to="/digital-assets" className="flex items-center w-full">
                     <FileArchive className="mr-2 h-4 w-4" />
                     <span>Digital Assets</span>
                   </Link>
                 </DropdownMenuItem>
-                <DropdownMenuItem asChild className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700">
+                <DropdownMenuItem asChild className="nav-dropdown-item">
                   <Link to="/settings" className="flex items-center w-full">
                     <Settings className="mr-2 h-4 w-4" />
                     <span>Settings</span>
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={onLogout} className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700">
+                <DropdownMenuItem onClick={onLogout} className="nav-dropdown-item">
                   Log out
                 </DropdownMenuItem>
               </DropdownMenuContent>
@@ -229,7 +229,7 @@ const Navigation: React.FC<NavigationProps> = ({ user, onLogin, onLogout }) => {
           </>
         ) : (
           <>
-            <Button onClick={onLogin} variant="default">
+            <Button onClick={onLogin} variant="default" className="legacy-button">
               Sign In
             </Button>
             <Link to="/register">
@@ -244,21 +244,21 @@ const Navigation: React.FC<NavigationProps> = ({ user, onLogin, onLogout }) => {
           <DropdownMenuTrigger className="block md:hidden">
             <Menu className="h-6 w-6" />
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
-            <DropdownMenuItem asChild className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700">
+          <DropdownMenuContent align="end" className="dropdown-menu-content">
+            <DropdownMenuItem asChild className="nav-dropdown-item">
               <Link to="/">Home</Link>
             </DropdownMenuItem>
-            <DropdownMenuItem asChild className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700">
+            <DropdownMenuItem asChild className="nav-dropdown-item">
               <Link to="/features">Features</Link>
             </DropdownMenuItem>
-            <DropdownMenuItem asChild className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700">
+            <DropdownMenuItem asChild className="nav-dropdown-item">
               <Link to="/pricing">Pricing</Link>
             </DropdownMenuItem>
-            <DropdownMenuItem asChild className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700">
+            <DropdownMenuItem asChild className="nav-dropdown-item">
               <Link to="/about">About</Link>
             </DropdownMenuItem>
             {!user && (
-              <DropdownMenuItem asChild className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700">
+              <DropdownMenuItem asChild className="nav-dropdown-item">
                 <Link to="/register">Register</Link>
               </DropdownMenuItem>
             )}

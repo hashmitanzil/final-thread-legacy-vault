@@ -3,6 +3,17 @@
 @import 'tailwindcss/components';
 @import 'tailwindcss/utilities';
 
+:root {
+  --primary: 267 70% 60%;      /* Purple: #8B5CF6 */
+  --primary-dark: 267 70% 50%; /* Darker purple: #7747EB */
+  --secondary: 264 68% 55%;    /* Light purple: #7E69AB */
+  --accent: 280 70% 60%;       /* Pink accent: #d053e0 */
+  --background: 250 20% 98%;   /* Light gray background */
+  --foreground: 225 20% 20%;   /* Dark text color */
+  --muted: 220 15% 95%;        /* Muted background */
+  --border: 240 10% 90%;       /* Light border color */
+}
+
 @layer utilities {
   .animate-ping-slow {
     animation: ping 3s cubic-bezier(0, 0, 0.2, 1) infinite;
@@ -26,6 +37,31 @@
   
   .pulse-border {
     animation: pulse-border 2s infinite;
+  }
+
+  .legacy-card {
+    @apply bg-white dark:bg-gray-800 shadow-md rounded-lg p-6 hover-lift;
+  }
+
+  .legacy-button {
+    @apply bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-medium py-2 px-4 rounded-md shadow-md transition-all duration-300;
+  }
+
+  .legacy-input {
+    @apply border border-gray-300 rounded-md px-4 py-2 focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition-all duration-200;
+  }
+
+  .avatar-glow {
+    box-shadow: 0 0 15px rgba(139, 92, 246, 0.7);
+  }
+
+  /* Dropdown styling */
+  .dropdown-menu {
+    @apply bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-lg rounded-md overflow-hidden;
+  }
+
+  .dropdown-item {
+    @apply flex w-full items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer;
   }
 }
 
@@ -83,11 +119,6 @@ html {
   background: rgba(139, 92, 246, 0.7);
 }
 
-/* Add custom dropdown styling */
-.dropdown-content {
-  @apply bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-lg rounded-md overflow-hidden;
-}
-
 /* Add animation to buttons */
 button {
   transition: transform 0.2s ease, box-shadow 0.2s ease;
@@ -100,4 +131,14 @@ button:hover:not(:disabled) {
 
 button:active:not(:disabled) {
   transform: translateY(0);
+}
+
+/* Fix for dropdown background */
+.dropdown-menu-content {
+  @apply bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-lg rounded-md overflow-hidden z-50;
+}
+
+/* Added styling for the navigation dropdown menu items */
+.nav-dropdown-item {
+  @apply w-full px-4 py-3 text-left text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-150 flex items-center gap-2;
 }

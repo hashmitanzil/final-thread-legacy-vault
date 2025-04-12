@@ -1,12 +1,9 @@
 
-import React, { Suspense, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { motion, useAnimation } from 'framer-motion';
 import { MessageSquare, X, Sparkles, Bot } from 'lucide-react';
 import { useThea } from '@/contexts/TheaContext';
 import { cn } from '@/lib/utils';
-import { Canvas } from '@react-three/fiber';
-import { OrbitControls } from '@react-three/drei';
-import TheaAvatarModel from './TheaAvatarModel';
 
 interface TheaAvatarProps {
   size?: 'sm' | 'md' | 'lg';
@@ -51,7 +48,7 @@ const TheaAvatar: React.FC<TheaAvatarProps> = ({
         isMinimized 
           ? 'bg-gradient-to-br from-purple-600 to-pink-500 shadow-[0_0_15px_rgba(139,92,246,0.7)]' 
           : 'bg-gradient-to-br from-purple-500 to-indigo-600 shadow-[0_0_20px_rgba(139,92,246,0.8)]',
-        'shadow-lg border-2 border-white/20',
+        'shadow-lg border-2 border-white/20 avatar-glow',
         className
       )}
       initial={{ scale: 0.8, opacity: 0 }}

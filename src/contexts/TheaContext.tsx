@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
+import { toast } from '@/hooks/use-toast';
 
 type Message = {
   id: string;
@@ -396,6 +397,38 @@ export const TheaProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsIntroShown(true);
     setIsMinimized(false);
   };
+
+  // Error handling for Thea component
+  useEffect(() => {
+    try {
+      // Check if critical dependencies are available
+      if (!window.localStorage) {
+        console.warn('LocalStorage not available. Some Thea features may not work properly.');
+        toast({
+          title: "Storage Error",
+          description: "Your browser has disabled local storage. Some features may not work properly.",
+          variant: "destructive"
+        });
+      }
+      
+      // Error handling for session storage
+      if (!window.sessionStorage) {
+        console.warn('SessionStorage not available. Thea intro state may not persist.');
+        // Provide fallback with localStorage
+        if (window.localStorage) {
+          console.info('Using localStorage as fallback for Thea intro state.');
+        }
+      }
+      
+    } catch (error) {
+      console.error('Error initializing Thea:', error);
+      toast({
+        title: "Assistant Error",
+        description: "There was an issue loading Thea assistant. Please refresh the page.",
+        variant: "destructive"
+      });
+    }
+  }, []);
 
   return (
     <TheaContext.Provider
