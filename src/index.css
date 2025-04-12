@@ -7,6 +7,14 @@
   .animate-ping-slow {
     animation: ping 3s cubic-bezier(0, 0, 0.2, 1) infinite;
   }
+  
+  .legacy-gradient {
+    @apply bg-gradient-to-br from-purple-600 to-blue-600;
+  }
+  
+  .glass-effect {
+    @apply backdrop-blur-md bg-white/10 border border-white/20;
+  }
 }
 
 @keyframes ping {
@@ -14,4 +22,39 @@
     transform: scale(1.5);
     opacity: 0;
   }
+}
+
+/* Add global smooth scrolling */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Enhance focus styles for accessibility */
+*:focus-visible {
+  outline: 2px solid hsl(var(--primary));
+  outline-offset: 2px;
+}
+
+/* Add text selection styling */
+::selection {
+  background-color: rgba(139, 92, 246, 0.3);
+}
+
+/* Add custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(139, 92, 246, 0.5);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(139, 92, 246, 0.7);
 }

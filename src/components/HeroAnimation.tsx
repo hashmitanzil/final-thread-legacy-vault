@@ -1,7 +1,7 @@
 
 import React, { useRef, useState, useEffect, Suspense } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
-import { OrbitControls, Sphere, MeshDistortMaterial, useGLTF } from '@react-three/drei';
+import { OrbitControls, Sphere, MeshDistortMaterial, useGLTF, Stars, Text, Float } from '@react-three/drei';
 import * as THREE from 'three';
 
 // Fallback component to show when 3D rendering fails
@@ -23,6 +23,10 @@ function AnimatedSphere() {
     if (mesh.current) {
       mesh.current.rotation.x += 0.01;
       mesh.current.rotation.y += 0.01;
+      // Add a gentle pulsing effect
+      mesh.current.scale.x = 1 + Math.sin(state.clock.elapsedTime * 0.5) * 0.1;
+      mesh.current.scale.y = 1 + Math.sin(state.clock.elapsedTime * 0.5) * 0.1;
+      mesh.current.scale.z = 1 + Math.sin(state.clock.elapsedTime * 0.5) * 0.1;
     }
   });
 
@@ -35,6 +39,8 @@ function AnimatedSphere() {
         speed={2} 
         roughness={0.2} 
         metalness={0.8}
+        emissive="#3b0764"
+        emissiveIntensity={0.5}
       />
     </Sphere>
   );
@@ -54,7 +60,13 @@ function FloatingCube() {
   return (
     <mesh ref={mesh} position={[2, 0, 0]}>
       <boxGeometry args={[0.5, 0.5, 0.5]} />
-      <meshStandardMaterial color="#3b82f6" metalness={0.5} roughness={0.2} />
+      <meshStandardMaterial 
+        color="#3b82f6" 
+        metalness={0.5} 
+        roughness={0.2}
+        emissive="#1e40af"
+        emissiveIntensity={0.5}
+      />
     </mesh>
   );
 }
@@ -73,8 +85,54 @@ function FloatingCard() {
   return (
     <mesh ref={mesh} position={[-2, 0, 0]}>
       <planeGeometry args={[1, 1.5]} />
-      <meshStandardMaterial color="#3b82f6" side={THREE.DoubleSide} />
+      <meshStandardMaterial 
+        color="#3b82f6" 
+        side={THREE.DoubleSide}
+        emissive="#1e40af"
+        emissiveIntensity={0.3}
+      />
     </mesh>
+  );
+}
+
+function FloatingMessage() {
+  return (
+    <Float
+      position={[0, -2, 0]}
+      rotation={[0, 0, 0]}
+      rotationIntensity={0.2}
+      floatIntensity={0.5}
+    >
+      <Text
+        color="#ffffff"
+        fontSize={0.3}
+        maxWidth={4}
+        lineHeight={1.2}
+        textAlign="center"
+        font="/fonts/Inter-Bold.woff"
+        anchorX="center"
+        anchorY="middle"
+      >
+        Your Digital Legacy
+      </Text>
+    </Float>
+  );
+}
+
+function LightRays() {
+  return (
+    <group>
+      <pointLight position={[10, 10, 10]} intensity={1} color="#8b5cf6" />
+      <pointLight position={[-10, -10, -10]} intensity={0.5} color="#3b82f6" />
+      <spotLight 
+        position={[5, 5, 5]} 
+        angle={0.3} 
+        penumbra={1} 
+        intensity={2} 
+        color="#d946ef" 
+        castShadow 
+      />
+    </group>
   );
 }
 
@@ -129,7 +187,10 @@ const HeroAnimation: React.FC = () => {
   }
 
   return (
-    <div className="h-[500px] w-full overflow-hidden">
+    <div className="h-[500px] w-full overflow-hidden relative">
+      {/* Background gradient overlay */}
+      <div className="absolute inset-0 bg-gradient-radial from-purple-900/30 to-transparent z-10 pointer-events-none"></div>
+      
       <ErrorBoundary fallback={<FallbackAnimation />}>
         <Suspense fallback={<FallbackAnimation />}>
           <Canvas 
@@ -144,22 +205,38 @@ const HeroAnimation: React.FC = () => {
             dpr={[1, 2]} // Responsive to device pixel ratio
           >
             <ambientLight intensity={0.5} />
-            <spotLight position={[10, 10, 10]} angle={0.15} penumbra={1} />
-            <pointLight position={[-10, -10, -10]} />
+            <LightRays />
+            
+            {/* Background stars effect */}
+            <Stars
+              radius={100}
+              depth={50}
+              count={3000}
+              factor={4}
+              saturation={0.5}
+              fade
+              speed={1}
+            />
+            
             <AnimatedSphere />
             <FloatingCube />
             <FloatingCard />
+            <FloatingMessage />
+            
             <OrbitControls 
               enableZoom={false} 
               enablePan={false} 
               autoRotate 
-              autoRotateSpeed={1}
+              autoRotateSpeed={0.5}
               maxPolarAngle={Math.PI / 2}
               minPolarAngle={Math.PI / 2}
             />
           </Canvas>
         </Suspense>
       </ErrorBoundary>
+      
+      {/* Foreground particle effect */}
+      <div className="absolute inset-0 bg-particles-pattern z-20 pointer-events-none opacity-30"></div>
     </div>
   );
 };
