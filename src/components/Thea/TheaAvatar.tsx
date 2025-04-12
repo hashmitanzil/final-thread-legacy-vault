@@ -1,7 +1,7 @@
 
 import React, { Suspense, useEffect } from 'react';
 import { motion, useAnimation } from 'framer-motion';
-import { MessageSquare, X, Sparkles } from 'lucide-react';
+import { MessageSquare, X, Sparkles, Bot } from 'lucide-react';
 import { useThea } from '@/contexts/TheaContext';
 import { cn } from '@/lib/utils';
 import { Canvas } from '@react-three/fiber';
@@ -39,8 +39,8 @@ const TheaAvatar: React.FC<TheaAvatarProps> = ({
   
   const sizeClasses = {
     sm: 'w-10 h-10',
-    md: 'w-16 h-16', // Increased size
-    lg: 'w-24 h-24'  // Increased size
+    md: 'w-16 h-16', 
+    lg: 'w-24 h-24'  
   };
   
   return (
@@ -95,15 +95,8 @@ const TheaAvatar: React.FC<TheaAvatarProps> = ({
           <X className="text-white h-6 w-6 z-10 drop-shadow-lg" />
         </motion.div>
       ) : (
-        <div className="w-full h-full">
-          <Canvas camera={{ position: [0, 0, 1.5], fov: 50 }}>
-            <ambientLight intensity={0.6} />
-            <pointLight position={[10, 10, 10]} intensity={1} />
-            <pointLight position={[-10, -10, -10]} intensity={0.5} color="#d946ef" />
-            <Suspense fallback={<div className="text-center text-white text-xs">Loading...</div>}>
-              <TheaAvatarModel isTalking={isSpeaking} />
-            </Suspense>
-          </Canvas>
+        <div className="w-full h-full flex items-center justify-center">
+          <Bot className="h-8 w-8 text-white z-10 drop-shadow-lg" />
         </div>
       )}
     </motion.div>
