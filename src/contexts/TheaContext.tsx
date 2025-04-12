@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 
@@ -72,7 +71,7 @@ const appKnowledge = {
     {
       id: 'proof-of-life',
       name: 'Proof of Life',
-      description: 'Simple login requirement every 30 days ensures your messages aren't delivered prematurely.'
+      description: 'Simple login requirement every 30 days ensures your messages aren\'t delivered prematurely.'
     },
     {
       id: 'legacy-video',
