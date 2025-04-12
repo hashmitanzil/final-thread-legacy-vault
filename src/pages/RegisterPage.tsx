@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -6,7 +5,7 @@ import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useAuth } from '@/contexts/AuthContext';
-import { toast } from '@/components/ui/use-toast';
+import { toast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import {
   Form,
@@ -39,7 +38,7 @@ const formSchema = z.object({
 type FormValues = z.infer<typeof formSchema>;
 
 const RegisterPage: React.FC = () => {
-  const { signup } = useAuth();
+  const { register } = useAuth();
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
   
@@ -56,9 +55,7 @@ const RegisterPage: React.FC = () => {
   const onSubmit = async (values: FormValues) => {
     try {
       setIsLoading(true);
-      const { data, error } = await signup(values.email, values.password, {
-        full_name: values.fullName,
-      });
+      const { data, error } = await register(values.fullName, values.email, values.password);
       
       if (error) {
         console.error("Registration error:", error);
@@ -82,7 +79,7 @@ const RegisterPage: React.FC = () => {
         navigate('/login');
       }, 1500);
       
-    } catch (error) {
+    } catch (error: any) {
       console.error("Unexpected error during registration:", error);
       toast({
         title: "Registration Error",

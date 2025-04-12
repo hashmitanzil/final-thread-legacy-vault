@@ -52,7 +52,11 @@ const TheaAvatar: React.FC<TheaAvatarProps> = ({
         className
       )}
       initial={{ scale: 0.8, opacity: 0 }}
-      animate={controls}
+      animate={{
+        scale: 1,
+        opacity: 1,
+        ...controls
+      }}
       whileHover={{ scale: 1.1, boxShadow: '0 0 25px rgba(147, 51, 234, 0.9)' }}
       whileTap={{ scale: 0.95 }}
       onClick={onClick || toggleChat}

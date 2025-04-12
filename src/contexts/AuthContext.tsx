@@ -1,7 +1,7 @@
 
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { User, Session } from '@supabase/supabase-js';
-import { toast } from '@/components/ui/use-toast';
+import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 
@@ -12,7 +12,7 @@ interface AuthContextType {
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
   loginWithGoogle: () => Promise<void>;
-  register: (name: string, email: string, password: string) => Promise<void>;
+  register: (name: string, email: string, password: string) => Promise<any>;
   logout: () => Promise<void>;
   deleteAccount: () => Promise<void>;
   updateProfile: (data: { full_name?: string; avatar_url?: string }) => Promise<void>;
@@ -155,11 +155,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
   
+  // Fix: Rename to register for consistency
   const register = async (name: string, email: string, password: string) => {
     try {
       setIsLoading(true);
       
-      const { error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
@@ -177,13 +178,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
       
       navigate('/dashboard');
+      
+      return { data, error: null };
     } catch (error: any) {
       toast({
         title: 'Registration failed',
         description: error.message || 'An unknown error occurred',
         variant: 'destructive',
       });
-      throw error;
+      
+      return { data: null, error };
     } finally {
       setIsLoading(false);
     }

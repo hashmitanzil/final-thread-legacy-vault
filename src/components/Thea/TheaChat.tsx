@@ -79,7 +79,7 @@ const TheaChat: React.FC = () => {
         </div>
         
         {/* Messages */}
-        <div className="p-3 h-80 overflow-y-auto bg-gray-50 dark:bg-gray-900">
+        <div className="p-3 h-80 overflow-y-auto bg-gray-50 dark:bg-gray-900 custom-scrollbar">
           {messages.length === 0 && (
             <div className="flex flex-col items-center justify-center h-full text-center p-6 text-gray-500">
               <Sparkles className="w-12 h-12 text-purple-500 mb-4" />
