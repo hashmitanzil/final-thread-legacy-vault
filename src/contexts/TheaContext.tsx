@@ -296,6 +296,12 @@ export const TheaProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return "Legacy messages let you create heartfelt communications for your loved ones. Would you like to create one?";
     } else if (input.includes('contact') || input.includes('trusted')) {
       return "Trusted contacts are people who will receive your legacy. You can add them in the Trusted Contacts section.";
+    } else if (input.includes('export')) {
+      return "You can export your data as a ZIP archive or PDF report from the Export section. This creates a backup of your digital legacy.";
+    } else if (input.includes('google login') || input.includes('sign in with google')) {
+      return "You can sign in with your Google account for faster access. Just click the 'Sign in with Google' button on the login page.";
+    } else if (input.includes('two factor') || input.includes('2fa')) {
+      return "Two-factor authentication adds an extra layer of security. You can enable it in your Account Settings.";
     } else {
       return "I'm still learning! If you have specific questions about Final Thread, I'll do my best to help.";
     }
@@ -367,6 +373,23 @@ export const TheaProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsIntroShown(false);
     setIsMinimized(true);
     sessionStorage.setItem('thea-intro-shown', 'true');
+    
+    // Add a final message after a short delay
+    setTimeout(() => {
+      const finalMessage: Message = {
+        id: Date.now().toString(),
+        text: "I'm here if you need anything. Feel free to reach out!",
+        sender: 'thea',
+        timestamp: new Date()
+      };
+      
+      setMessages(prev => [...prev, finalMessage]);
+      simulateSpeaking(3000);
+      
+      // Show this message as a popup
+      setIsMinimized(false);
+      setTimeout(() => setIsMinimized(true), 5000);
+    }, 1000);
   };
 
   const resetIntro = () => {

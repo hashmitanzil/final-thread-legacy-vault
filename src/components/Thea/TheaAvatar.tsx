@@ -40,13 +40,13 @@ const TheaAvatar: React.FC<TheaAvatarProps> = ({
       animate={{ 
         scale: 1, 
         opacity: 1,
-        y: [0, -10, 0],
+        y: [0, -5, 0], // Reduced movement for less distraction
       }}
       transition={{
         y: {
           repeat: Infinity,
           repeatType: "mirror",
-          duration: 2,
+          duration: 3, // Slower animation
           ease: "easeInOut"
         },
         scale: { duration: 0.3 },
@@ -65,7 +65,7 @@ const TheaAvatar: React.FC<TheaAvatarProps> = ({
           <Canvas camera={{ position: [0, 0, 1.5], fov: 50 }}>
             <ambientLight intensity={0.6} />
             <pointLight position={[10, 10, 10]} intensity={1} />
-            <Suspense fallback={null}>
+            <Suspense fallback={<div className="text-center text-white text-xs">Loading...</div>}>
               <TheaAvatarModel isTalking={isSpeaking} />
             </Suspense>
           </Canvas>

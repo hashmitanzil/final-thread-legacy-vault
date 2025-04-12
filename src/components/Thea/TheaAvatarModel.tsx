@@ -1,32 +1,14 @@
 
-import React, { useRef, useEffect } from 'react';
-import { useGLTF, useAnimations } from '@react-three/drei';
+import React, { useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
-import { GLTF } from 'three-stdlib';
-
-type GLTFResult = GLTF & {
-  nodes: {
-    Head: THREE.Mesh;
-    Hair: THREE.Mesh;
-    Eyes: THREE.Mesh;
-    Mouth: THREE.Mesh;
-  };
-  materials: {
-    Skin: THREE.MeshStandardMaterial;
-    Hair: THREE.MeshStandardMaterial;
-    Eyes: THREE.MeshStandardMaterial;
-    Mouth: THREE.MeshStandardMaterial;
-  };
-  animations: THREE.AnimationClip[];
-};
 
 interface TheaAvatarModelProps {
   isTalking?: boolean;
 }
 
 const TheaAvatarModel: React.FC<TheaAvatarModelProps> = ({ isTalking = false }) => {
-  // Simple head model - we're just creating a basic model since we don't have an actual GLTF file
+  // Reference to the group for animations
   const group = useRef<THREE.Group>(null);
   
   useFrame(({ clock }) => {
@@ -50,7 +32,7 @@ const TheaAvatarModel: React.FC<TheaAvatarModelProps> = ({ isTalking = false }) 
       </mesh>
       
       {/* Hair */}
-      <mesh position={[0, 0.2, 0]} castShadow>
+      <mesh position={[0, 0.15, 0]} castShadow>
         <sphereGeometry args={[0.52, 32, 32, 0, Math.PI * 2, 0, Math.PI * 0.5]} />
         <meshStandardMaterial color="#553377" />
       </mesh>
@@ -74,7 +56,7 @@ const TheaAvatarModel: React.FC<TheaAvatarModelProps> = ({ isTalking = false }) 
         </mesh>
       </mesh>
       
-      {/* Mouth */}
+      {/* Mouth - changes when talking */}
       <mesh position={[0, -0.15, 0.4]} castShadow>
         <boxGeometry args={[0.2, isTalking ? 0.1 : 0.03, 0.05]} />
         <meshStandardMaterial color="#cc5555" />
