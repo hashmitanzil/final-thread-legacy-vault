@@ -44,7 +44,7 @@
   }
 
   .legacy-button {
-    @apply bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-medium py-2 px-4 rounded-md shadow-md transition-all duration-300;
+    @apply bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-medium py-2 px-4 rounded-xl shadow-md transition-all duration-300;
   }
 
   .legacy-input {
@@ -74,12 +74,12 @@
   
   /* Improved form scrolling */
   .scrollable-form {
-    @apply max-h-[70vh] overflow-y-auto pr-2;
+    @apply max-h-[70vh] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100;
   }
   
   /* Dialog content scrolling */
   .dialog-content-scroll {
-    @apply max-h-[calc(100vh-10rem)] overflow-y-auto;
+    @apply max-h-[calc(100vh-10rem)] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100;
   }
 }
 
@@ -130,7 +130,7 @@ html {
 
 ::-webkit-scrollbar-thumb {
   background: rgba(139, 92, 246, 0.5);
-  border-radius: 4px;
+  border-radius: 10px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
@@ -140,7 +140,7 @@ html {
 /* Add animation to buttons */
 button {
   transition: transform 0.2s ease, box-shadow 0.2s ease;
-  border-radius: 10px;
+  border-radius: 12px !important;
 }
 
 button:hover:not(:disabled) {
@@ -166,11 +166,12 @@ button:active:not(:disabled) {
 .radix-dialog-content {
   max-height: 85vh !important;
   overflow-y: auto !important;
+  border-radius: 12px !important;
 }
 
 /* Form container improvements */
 .form-container {
-  @apply max-h-[70vh] overflow-y-auto pr-3;
+  @apply max-h-[70vh] overflow-y-auto pr-3 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100;
 }
 
 /* Dropdown menus fix */
@@ -183,7 +184,7 @@ button:active:not(:disabled) {
 
 /* Scrollable form override */
 form {
-  @apply max-h-[70vh] overflow-y-auto;
+  @apply max-h-[70vh] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100;
 }
 
 /* Radix dropdown content overrides */
@@ -193,4 +194,19 @@ form {
 [role="listbox"] {
   @apply bg-white dark:bg-gray-800 !important;
   z-index: 9999 !important;
+}
+
+/* General button style overrides */
+.btn, .button, [type="button"], [type="submit"] {
+  border-radius: 12px !important;
+}
+
+/* Input styles */
+input, select, textarea, .select-wrapper {
+  border-radius: 8px !important;
+}
+
+/* Popover and tooltip styles */
+.popover, .tooltip, .tooltip-content {
+  border-radius: 8px !important;
 }

@@ -61,7 +61,7 @@ const PricingPage: React.FC = () => {
     {
       name: "Premium",
       description: "Complete digital legacy management solution",
-      price: { monthly: 9.99, yearly: 99.99 },
+      price: { monthly: 199, yearly: 1999 },
       storage: "10 GB",
       features: [
         { name: "Unlimited final messages", included: true },
@@ -80,7 +80,7 @@ const PricingPage: React.FC = () => {
     {
       name: "Legacy",
       description: "Lifetime access with premium features",
-      price: { monthly: null, yearly: 299 },
+      price: { monthly: null, yearly: 9999 },
       storage: "Unlimited",
       features: [
         { name: "Unlimited final messages", included: true },
@@ -103,7 +103,7 @@ const PricingPage: React.FC = () => {
   const formatPrice = (price: number | null) => {
     if (price === null) return 'One-time';
     if (price === 0) return 'Free';
-    return `$${price.toFixed(2)}`;
+    return `₹${price}`;
   };
 
   return (
@@ -209,7 +209,7 @@ const PricingPage: React.FC = () => {
                       <span className="text-4xl font-bold">
                         {formatPrice(plan.price[billingCycle])}
                       </span>
-                      {plan.price[billingCycle] !== 0 && plan.price[billingCycle] !== null && (
+                      {plan.price[billingCycle] !== 0 && plan.price[billingCycle] !== null && plan.name !== "Legacy" && (
                         <span className="text-muted-foreground ml-2 mb-1">
                           / {billingCycle === 'monthly' ? 'month' : 'year'}
                         </span>
@@ -223,7 +223,7 @@ const PricingPage: React.FC = () => {
                   <Link to={isAuthenticated ? "/dashboard" : "/register"}>
                     <Button 
                       variant={plan.buttonVariant} 
-                      className="w-full"
+                      className="w-full rounded-xl"
                       disabled={isAuthenticated && plan.name === "Free" && plan.buttonText === "Current Plan"}
                     >
                       {plan.buttonText}
@@ -312,7 +312,7 @@ const PricingPage: React.FC = () => {
             
             <motion.div className="py-6" variants={itemVariants}>
               <h3 className="text-xl font-semibold mb-2">What payment methods do you accept?</h3>
-              <p className="text-muted-foreground">We accept all major credit cards, PayPal, and selected cryptocurrencies for payment.</p>
+              <p className="text-muted-foreground">We accept all major credit cards, PayPal, UPI, and selected cryptocurrencies for payment.</p>
             </motion.div>
             
             <motion.div className="py-6" variants={itemVariants}>
@@ -348,12 +348,12 @@ const PricingPage: React.FC = () => {
               Join thousands who trust Final Thread to protect what matters most.
             </p>
             <Link to={isAuthenticated ? "/dashboard" : "/register"}>
-              <Button size="lg" variant="secondary" className="mr-4">
+              <Button size="lg" variant="secondary" className="mr-4 rounded-xl">
                 {isAuthenticated ? "Go to Dashboard" : "Get Started Free"}
               </Button>
             </Link>
             <Link to="/features">
-              <Button size="lg" variant="outline" className="border-white text-white hover:bg-white/10">
+              <Button size="lg" variant="outline" className="border-white text-white hover:bg-white/10 rounded-xl">
                 Explore Features
               </Button>
             </Link>

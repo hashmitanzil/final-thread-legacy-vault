@@ -1,5 +1,5 @@
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useThea } from '@/contexts/TheaContext';
 import TheaAvatar from './TheaAvatar';
 import TheaChat from './TheaChat';
@@ -10,9 +10,24 @@ import { toast } from '@/hooks/use-toast';
 
 const Thea: React.FC = () => {
   const { isMinimized, isIntroShown, currentSection, scrollTriggers, messages } = useThea();
+  const [showPopup, setShowPopup] = useState(false);
   
   // Find the most recent message to display as a popup
   const mostRecentMessage = messages.length > 0 ? messages[messages.length - 1] : null;
+  
+  useEffect(() => {
+    // Show popup when a new message arrives from Thea
+    if (isMinimized && mostRecentMessage && mostRecentMessage.sender === 'thea') {
+      setShowPopup(true);
+      
+      // Hide popup after 5 seconds
+      const timer = setTimeout(() => {
+        setShowPopup(false);
+      }, 5000);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [isMinimized, mostRecentMessage]);
   
   // Error handling for Thea component
   useEffect(() => {
@@ -44,7 +59,7 @@ const Thea: React.FC = () => {
   return (
     <>
       <AnimatePresence>
-        {!isMinimized && !isIntroShown && mostRecentMessage && mostRecentMessage.sender === 'thea' && (
+        {showPopup && isMinimized && mostRecentMessage && mostRecentMessage.sender === 'thea' && (
           <motion.div
             initial={{ opacity: 0, scale: 0.8, y: 10 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}

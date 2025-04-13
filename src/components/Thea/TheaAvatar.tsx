@@ -43,7 +43,7 @@ const TheaAvatar: React.FC<TheaAvatarProps> = ({
   return (
     <motion.div
       className={cn(
-        'rounded-full flex items-center justify-center cursor-pointer relative z-[9999] overflow-hidden fixed bottom-4 right-4',
+        'rounded-full flex items-center justify-center cursor-pointer relative z-[9999] overflow-hidden fixed bottom-6 right-6',
         sizeClasses[size],
         isMinimized 
           ? 'bg-gradient-to-br from-purple-600 to-pink-500 shadow-[0_0_15px_rgba(139,92,246,0.7)]' 
