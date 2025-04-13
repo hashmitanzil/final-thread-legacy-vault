@@ -134,7 +134,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       setIsLoading(true);
       
-      const { error } = await supabase.auth.signInWithOAuth({
+      const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
           redirectTo: `${window.location.origin}/dashboard`,
@@ -143,7 +143,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (error) throw error;
       
-      // The redirect will happen automatically, no need to toast or navigate
+      // No need to navigate or toast here as the redirect happens automatically
+      console.log("Google auth initiated:", data);
     } catch (error: any) {
       setIsLoading(false);
       toast({
@@ -151,6 +152,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         description: error.message || 'An unknown error occurred',
         variant: 'destructive',
       });
+      console.error("Google login error:", error);
       throw error;
     }
   };

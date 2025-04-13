@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Accordion, 
   AccordionContent, 
@@ -16,7 +16,6 @@ import {
   LifeBuoy, 
   BookOpen, 
   Users, 
-  Send, 
   Shield
 } from "lucide-react";
 import { Link } from "react-router-dom";
@@ -25,6 +24,7 @@ import { toast } from "@/hooks/use-toast";
 const HelpCenterPage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
+  const faqsRef = useRef<HTMLDivElement>(null);
   
   const faqs = [
     {
@@ -76,10 +76,15 @@ const HelpCenterPage: React.FC = () => {
     { name: "Trusted Contacts", id: "trusted-contacts", icon: <LifeBuoy className="h-5 w-5 mr-2" />, count: 6 }
   ];
 
+  useEffect(() => {
+    // Scroll to FAQs section when a category is selected
+    if (activeCategory && faqsRef.current) {
+      faqsRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [activeCategory]);
+
   const handleCategoryClick = (categoryId: string) => {
     setActiveCategory(activeCategory === categoryId ? null : categoryId);
-    // Scroll to the FAQs section when a category is selected
-    document.getElementById('faqs-section')?.scrollIntoView({ behavior: 'smooth' });
   };
 
   const handleContactSupport = () => {
@@ -90,7 +95,12 @@ const HelpCenterPage: React.FC = () => {
   };
   
   const handleViewDocumentation = () => {
+    // Open documentation in a new tab
     window.open('/documentation', '_blank');
+    toast({
+      title: "Documentation Opening",
+      description: "Opening our documentation in a new tab.",
+    });
   };
 
   const filteredFaqs = searchQuery 
@@ -147,14 +157,17 @@ const HelpCenterPage: React.FC = () => {
             <p className="text-sm text-muted-foreground mb-4">
               Can't find what you're looking for? Contact our support team.
             </p>
-            <Button className="w-full" onClick={handleContactSupport}>
+            <Button 
+              className="w-full" 
+              onClick={handleContactSupport}
+            >
               <MessageSquare className="mr-2 h-4 w-4" />
               Contact Support
             </Button>
           </div>
         </div>
         
-        <div className="md:col-span-3" id="faqs-section">
+        <div className="md:col-span-3" id="faqs-section" ref={faqsRef}>
           <h2 className="text-2xl font-semibold mb-6">
             {activeCategory 
               ? `${categories.find(c => c.id === activeCategory)?.name} FAQs` 
@@ -191,11 +204,16 @@ const HelpCenterPage: React.FC = () => {
               Our support team is here to help you with any questions or issues you may have.
             </p>
             <div className="flex flex-wrap gap-4">
-              <Button variant="outline" onClick={handleViewDocumentation}>
+              <Button 
+                variant="outline" 
+                onClick={handleViewDocumentation}
+              >
                 <BookOpen className="mr-2 h-4 w-4" />
                 View Documentation
               </Button>
-              <Button onClick={handleContactSupport}>
+              <Button 
+                onClick={handleContactSupport}
+              >
                 <MessageSquare className="mr-2 h-4 w-4" />
                 Contact Support
               </Button>

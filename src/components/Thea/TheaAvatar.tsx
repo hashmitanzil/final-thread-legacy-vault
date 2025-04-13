@@ -1,7 +1,7 @@
 
 import React, { useEffect } from 'react';
 import { motion, useAnimation } from 'framer-motion';
-import { MessageSquare, X, Bot, Sparkles } from 'lucide-react';
+import { MessageSquare, X } from 'lucide-react';
 import { useThea } from '@/contexts/TheaContext';
 import { cn } from '@/lib/utils';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -79,7 +79,7 @@ const TheaAvatar: React.FC<TheaAvatarProps> = ({
               </motion.div>
             ) : (
               <div className="w-full h-full flex items-center justify-center">
-                <Sparkles className="h-10 w-10 text-white z-10 drop-shadow-lg" />
+                <MessageSquare className="h-10 w-10 text-white z-10 drop-shadow-lg" />
               </div>
             )}
           </motion.div>
@@ -90,7 +90,7 @@ const TheaAvatar: React.FC<TheaAvatarProps> = ({
           sideOffset={20}
         >
           <div className="flex items-start gap-3">
-            <Sparkles className="h-5 w-5 text-purple-500 mt-1 shrink-0" />
+            <MessageSquare className="h-5 w-5 text-purple-500 mt-1 shrink-0" />
             <div>
               <p className="text-sm font-medium mb-1">Thea</p>
               <p className="text-sm text-gray-700 dark:text-gray-200">
@@ -132,7 +132,7 @@ const TheaAvatar: React.FC<TheaAvatarProps> = ({
             </motion.div>
           ) : (
             <div className="w-full h-full flex items-center justify-center">
-              <Sparkles className="h-10 w-10 text-white z-10 drop-shadow-lg" />
+              <MessageSquare className="h-10 w-10 text-white z-10 drop-shadow-lg" />
             </div>
           )}
         </motion.div>
