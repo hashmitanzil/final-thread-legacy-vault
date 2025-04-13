@@ -9,59 +9,98 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Search, MessageSquare, FileQuestion, LifeBuoy, BookOpen } from "lucide-react";
+import { 
+  Search, 
+  MessageSquare, 
+  FileQuestion, 
+  LifeBuoy, 
+  BookOpen, 
+  Users, 
+  Send, 
+  Shield
+} from "lucide-react";
+import { Link } from "react-router-dom";
+import { toast } from "@/hooks/use-toast";
 
 const HelpCenterPage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
+  const [activeCategory, setActiveCategory] = useState<string | null>(null);
   
   const faqs = [
     {
       question: "How does Digital Legacy Vault ensure my data is secure?",
-      answer: "We employ bank-level encryption for all stored data. Your files and messages are encrypted both in transit and at rest. Additionally, we use multi-factor authentication and regular security audits to ensure your legacy data remains protected."
+      answer: "We employ bank-level encryption for all stored data. Your files and messages are encrypted both in transit and at rest. Additionally, we use multi-factor authentication and regular security audits to ensure your legacy data remains protected.",
+      category: "account-management"
     },
     {
       question: "What happens to my legacy data after I pass away?",
-      answer: "After your passing is confirmed (either by trusted contacts or through our verification system), your pre-set instructions are followed. Messages and files are delivered to recipients based on your preferences, and your trusted contacts gain access to any information you've designated for them."
+      answer: "After your passing is confirmed (either by trusted contacts or through our verification system), your pre-set instructions are followed. Messages and files are delivered to recipients based on your preferences, and your trusted contacts gain access to any information you've designated for them.",
+      category: "trusted-contacts"
     },
     {
       question: "Can I change the delivery date for a scheduled message?",
-      answer: "Yes, you have complete control over all scheduled messages. You can modify the delivery date, edit the content, or delete the message entirely at any time before it's delivered."
+      answer: "Yes, you have complete control over all scheduled messages. You can modify the delivery date, edit the content, or delete the message entirely at any time before it's delivered.",
+      category: "messages-delivery"
     },
     {
       question: "How do trusted contacts verify my passing?",
-      answer: "Trusted contacts can confirm your passing through our secure verification process. This typically involves uploading a death certificate or other official documentation. Multiple trusted contacts can be required for verification to ensure accuracy."
+      answer: "Trusted contacts can confirm your passing through our secure verification process. This typically involves uploading a death certificate or other official documentation. Multiple trusted contacts can be required for verification to ensure accuracy.",
+      category: "trusted-contacts"
     },
     {
       question: "What happens if I stop using the platform for a long time?",
-      answer: "If you enable inactivity triggers, the system will first attempt to contact you through various channels. If you don't respond within your specified timeframe, your pre-selected messages and files will be delivered according to your instructions."
+      answer: "If you enable inactivity triggers, the system will first attempt to contact you through various channels. If you don't respond within your specified timeframe, your pre-selected messages and files will be delivered according to your instructions.",
+      category: "account-management"
     },
     {
       question: "Is there a limit to how much data I can store in my vault?",
-      answer: "Storage limits depend on your subscription plan. Free accounts include 1GB of storage, while premium plans offer expanded storage options. You can view your current usage and upgrade your plan at any time from your account settings."
+      answer: "Storage limits depend on your subscription plan. Free accounts include 1GB of storage, while premium plans offer expanded storage options. You can view your current usage and upgrade your plan at any time from your account settings.",
+      category: "account-management"
     },
     {
       question: "How do I create personalized messages for different recipients?",
-      answer: "When creating a new message, you can select multiple recipients and choose to customize the content for each person. This allows you to create variations of your message tailored to your relationship with each recipient."
+      answer: "When creating a new message, you can select multiple recipients and choose to customize the content for each person. This allows you to create variations of your message tailored to your relationship with each recipient.",
+      category: "messages-delivery"
     },
     {
       question: "Can I export my entire vault as a backup?",
-      answer: "Yes, you can export your entire vault as a ZIP file or printable report at any time. This gives you an offline backup of all your digital legacy information for personal archiving or legal purposes."
+      answer: "Yes, you can export your entire vault as a ZIP file or printable report at any time. This gives you an offline backup of all your digital legacy information for personal archiving or legal purposes.",
+      category: "getting-started"
     }
   ];
+
+  const categories = [
+    { name: "Getting Started", id: "getting-started", icon: <BookOpen className="h-5 w-5 mr-2" />, count: 5 },
+    { name: "Account Management", id: "account-management", icon: <FileQuestion className="h-5 w-5 mr-2" />, count: 7 },
+    { name: "Messages & Delivery", id: "messages-delivery", icon: <MessageSquare className="h-5 w-5 mr-2" />, count: 12 },
+    { name: "Trusted Contacts", id: "trusted-contacts", icon: <LifeBuoy className="h-5 w-5 mr-2" />, count: 6 }
+  ];
+
+  const handleCategoryClick = (categoryId: string) => {
+    setActiveCategory(activeCategory === categoryId ? null : categoryId);
+    // Scroll to the FAQs section when a category is selected
+    document.getElementById('faqs-section')?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  const handleContactSupport = () => {
+    toast({
+      title: "Support Request Submitted",
+      description: "Our team will get back to you shortly. Thank you for your patience.",
+    });
+  };
+  
+  const handleViewDocumentation = () => {
+    window.open('/documentation', '_blank');
+  };
 
   const filteredFaqs = searchQuery 
     ? faqs.filter(faq => 
         faq.question.toLowerCase().includes(searchQuery.toLowerCase()) || 
         faq.answer.toLowerCase().includes(searchQuery.toLowerCase())
       )
+    : activeCategory 
+    ? faqs.filter(faq => faq.category === activeCategory)
     : faqs;
-
-  const categories = [
-    { name: "Getting Started", icon: <BookOpen className="h-5 w-5 mr-2" />, count: 5 },
-    { name: "Account Management", icon: <FileQuestion className="h-5 w-5 mr-2" />, count: 7 },
-    { name: "Messages & Delivery", icon: <MessageSquare className="h-5 w-5 mr-2" />, count: 12 },
-    { name: "Trusted Contacts", icon: <LifeBuoy className="h-5 w-5 mr-2" />, count: 6 }
-  ];
 
   return (
     <div className="container mx-auto py-12 px-4 max-w-7xl">
@@ -70,13 +109,15 @@ const HelpCenterPage: React.FC = () => {
         <p className="text-xl text-muted-foreground mb-8">Find answers to common questions and get support</p>
         
         <div className="flex w-full max-w-lg mx-auto items-center space-x-2 mb-12">
-          <Search className="w-5 h-5 text-muted-foreground absolute ml-3" />
-          <Input
-            placeholder="Search for answers..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10"
-          />
+          <div className="relative w-full">
+            <Search className="w-5 h-5 text-muted-foreground absolute left-3 top-1/2 transform -translate-y-1/2" />
+            <Input
+              placeholder="Search for answers..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10"
+            />
+          </div>
           <Button type="submit">Search</Button>
         </div>
       </div>
@@ -85,11 +126,12 @@ const HelpCenterPage: React.FC = () => {
         <div className="md:col-span-1">
           <h2 className="text-xl font-semibold mb-4">Categories</h2>
           <div className="space-y-2">
-            {categories.map((category, index) => (
+            {categories.map((category) => (
               <Button
-                key={index}
+                key={category.id}
                 variant="ghost"
-                className="w-full justify-start font-normal text-base hover:bg-muted"
+                className={`w-full justify-start font-normal text-base hover:bg-muted ${activeCategory === category.id ? 'bg-muted' : ''}`}
+                onClick={() => handleCategoryClick(category.id)}
               >
                 {category.icon}
                 {category.name}
@@ -105,15 +147,19 @@ const HelpCenterPage: React.FC = () => {
             <p className="text-sm text-muted-foreground mb-4">
               Can't find what you're looking for? Contact our support team.
             </p>
-            <Button className="w-full">
+            <Button className="w-full" onClick={handleContactSupport}>
               <MessageSquare className="mr-2 h-4 w-4" />
               Contact Support
             </Button>
           </div>
         </div>
         
-        <div className="md:col-span-3">
-          <h2 className="text-2xl font-semibold mb-6">Frequently Asked Questions</h2>
+        <div className="md:col-span-3" id="faqs-section">
+          <h2 className="text-2xl font-semibold mb-6">
+            {activeCategory 
+              ? `${categories.find(c => c.id === activeCategory)?.name} FAQs` 
+              : "Frequently Asked Questions"}
+          </h2>
           
           {filteredFaqs.length > 0 ? (
             <Accordion type="single" collapsible className="w-full">
@@ -145,11 +191,11 @@ const HelpCenterPage: React.FC = () => {
               Our support team is here to help you with any questions or issues you may have.
             </p>
             <div className="flex flex-wrap gap-4">
-              <Button variant="outline">
+              <Button variant="outline" onClick={handleViewDocumentation}>
                 <BookOpen className="mr-2 h-4 w-4" />
                 View Documentation
               </Button>
-              <Button>
+              <Button onClick={handleContactSupport}>
                 <MessageSquare className="mr-2 h-4 w-4" />
                 Contact Support
               </Button>
