@@ -1,5 +1,5 @@
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -24,7 +24,8 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
-import { Lock } from 'lucide-react';
+import { Lock, AlertCircle } from 'lucide-react';
+import { toast } from '@/hooks/use-toast';
 
 const formSchema = z.object({
   email: z.string().email('Invalid email address'),
@@ -34,6 +35,7 @@ const formSchema = z.object({
 const LoginPage: React.FC = () => {
   const { login, loginWithGoogle, isAuthenticated, isLoading } = useAuth();
   const navigate = useNavigate();
+  const [error, setError] = useState<string | null>(null);
   
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -52,21 +54,29 @@ const LoginPage: React.FC = () => {
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     try {
+      setError(null);
       await login(values.email, values.password);
       // Redirect handled by useEffect
     } catch (error) {
       console.error('Login error:', error);
+      setError('Invalid email or password. Please try again.');
       // Error handling done in AuthContext
     }
   };
 
   const handleGoogleSignIn = async () => {
     try {
+      setError(null);
       await loginWithGoogle();
       // Redirect will happen automatically via OAuth
     } catch (error) {
       console.error('Google login error:', error);
-      // Error handling done in AuthContext
+      setError('Google sign-in failed. Please try again.');
+      toast({
+        title: "Google Login Failed",
+        description: "There was an issue signing in with Google. Please try again.",
+        variant: "destructive"
+      });
     }
   };
 
@@ -84,6 +94,13 @@ const LoginPage: React.FC = () => {
           </CardDescription>
         </CardHeader>
         <CardContent>
+          {error && (
+            <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md p-3 mb-4 flex items-start">
+              <AlertCircle className="h-5 w-5 text-red-500 mr-2 mt-0.5 shrink-0" />
+              <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+            </div>
+          )}
+          
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
               <FormField

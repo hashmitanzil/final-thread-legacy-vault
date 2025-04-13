@@ -1,7 +1,7 @@
 
 import React, { useEffect } from 'react';
 import { motion, useAnimation } from 'framer-motion';
-import { MessageSquare, X } from 'lucide-react';
+import { MessageSquare, Sparkles, X } from 'lucide-react';
 import { useThea } from '@/contexts/TheaContext';
 import { cn } from '@/lib/utils';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -46,62 +46,8 @@ const TheaAvatar: React.FC<TheaAvatarProps> = ({
   };
   
   return (
-    <>
-      <Popover open={showRecent && !isChatOpen}>
-        <PopoverTrigger asChild>
-          <motion.div
-            className={cn(
-              'rounded-full flex items-center justify-center cursor-pointer relative z-[9999] overflow-hidden fixed bottom-6 right-6',
-              sizeClasses[size],
-              isMinimized 
-                ? 'bg-gradient-to-br from-purple-600 to-pink-500 shadow-[0_0_15px_rgba(139,92,246,0.7)]' 
-                : 'bg-gradient-to-br from-purple-500 to-indigo-600 shadow-[0_0_20px_rgba(139,92,246,0.8)]',
-              'shadow-lg border-2 border-white/20 avatar-glow',
-              className
-            )}
-            initial={{ scale: 0.8, opacity: 0 }}
-            animate={{
-              scale: 1,
-              opacity: 1,
-              ...controls
-            }}
-            whileHover={{ scale: 1.1, boxShadow: '0 0 25px rgba(147, 51, 234, 0.9)' }}
-            whileTap={{ scale: 0.95 }}
-            onClick={onClick || toggleChat}
-          >
-            {isChatOpen ? (
-              <motion.div
-                initial={{ rotate: 0 }}
-                animate={{ rotate: 360 }}
-                transition={{ duration: 0.5 }}
-              >
-                <X className="text-white h-6 w-6 z-10 drop-shadow-lg" />
-              </motion.div>
-            ) : (
-              <div className="w-full h-full flex items-center justify-center">
-                <MessageSquare className="h-10 w-10 text-white z-10 drop-shadow-lg" />
-              </div>
-            )}
-          </motion.div>
-        </PopoverTrigger>
-        <PopoverContent 
-          className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-lg border border-purple-200 dark:border-purple-700/30 w-[280px]" 
-          side="left"
-          sideOffset={20}
-        >
-          <div className="flex items-start gap-3">
-            <MessageSquare className="h-5 w-5 text-purple-500 mt-1 shrink-0" />
-            <div>
-              <p className="text-sm font-medium mb-1">Thea</p>
-              <p className="text-sm text-gray-700 dark:text-gray-200">
-                {mostRecentMessage?.text}
-              </p>
-            </div>
-          </div>
-        </PopoverContent>
-      </Popover>
-      
-      {!showRecent && (
+    <Popover open={showRecent && !isChatOpen}>
+      <PopoverTrigger asChild>
         <motion.div
           className={cn(
             'rounded-full flex items-center justify-center cursor-pointer relative z-[9999] overflow-hidden fixed bottom-6 right-6',
@@ -132,12 +78,27 @@ const TheaAvatar: React.FC<TheaAvatarProps> = ({
             </motion.div>
           ) : (
             <div className="w-full h-full flex items-center justify-center">
-              <MessageSquare className="h-10 w-10 text-white z-10 drop-shadow-lg" />
+              <Sparkles className="h-10 w-10 text-white z-10 drop-shadow-lg" />
             </div>
           )}
         </motion.div>
-      )}
-    </>
+      </PopoverTrigger>
+      <PopoverContent 
+        className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-lg border border-purple-200 dark:border-purple-700/30 w-[280px]" 
+        side="left"
+        sideOffset={20}
+      >
+        <div className="flex items-start gap-3">
+          <Sparkles className="h-5 w-5 text-purple-500 mt-1 shrink-0" />
+          <div>
+            <p className="text-sm font-medium mb-1">Thea</p>
+            <p className="text-sm text-gray-700 dark:text-gray-200">
+              {mostRecentMessage?.text}
+            </p>
+          </div>
+        </div>
+      </PopoverContent>
+    </Popover>
   );
 };
 

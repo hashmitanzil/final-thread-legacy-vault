@@ -1,3 +1,4 @@
+
 @import 'tailwindcss/base';
 @import 'tailwindcss/components';
 @import 'tailwindcss/utilities';
@@ -71,34 +72,38 @@
            transform hover:-translate-y-1;
   }
   
+  /* Custom scrollbar utilities */
+  .scrollbar-thin {
+    @apply overflow-auto;
+    scrollbar-width: thin;
+  }
+
+  .scrollbar-thumb-gray-300 {
+    @apply scrollbar-thin;
+  }
+
+  .scrollbar-thumb-gray-300::-webkit-scrollbar-thumb {
+    @apply bg-gray-300 dark:bg-gray-600;
+    border-radius: 9999px;
+  }
+
+  .scrollbar-track-gray-100 {
+    @apply scrollbar-thin;
+  }
+
+  .scrollbar-track-gray-100::-webkit-scrollbar-track {
+    @apply bg-gray-100 dark:bg-gray-800;
+    border-radius: 9999px;
+  }
+  
   /* Improved form scrolling */
   .scrollable-form {
-    @apply max-h-[70vh] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100;
+    @apply max-h-[70vh] overflow-y-auto pr-2;
   }
   
   /* Dialog content scrolling */
   .dialog-content-scroll {
-    @apply max-h-[calc(100vh-10rem)] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100;
-  }
-
-  /* Custom scrollbar utilities */
-  .scrollbar-thin {
-    scrollbar-width: thin;
-  }
-
-  .scrollbar-thumb-gray-300::-webkit-scrollbar-thumb {
-    background-color: #d1d5db; /* Tailwind gray-300 */
-    border-radius: 9999px;
-  }
-
-  .scrollbar-track-gray-100::-webkit-scrollbar-track {
-    background-color: #f3f4f6; /* Tailwind gray-100 */
-    border-radius: 9999px;
-  }
-
-  ::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
+    @apply max-h-[calc(100vh-10rem)] overflow-y-auto;
   }
 }
 
@@ -190,7 +195,7 @@ button:active:not(:disabled) {
 
 /* Form container improvements */
 .form-container {
-  @apply max-h-[70vh] overflow-y-auto pr-3 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100;
+  @apply max-h-[70vh] overflow-y-auto pr-3;
 }
 
 /* Dropdown menus fix */
@@ -203,7 +208,7 @@ button:active:not(:disabled) {
 
 /* Scrollable form override */
 form {
-  @apply max-h-[70vh] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100;
+  @apply max-h-[70vh] overflow-y-auto;
 }
 
 /* Radix dropdown content overrides */
