@@ -50,8 +50,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           {children}
         </main>
         <Footer />
-        <Thea />
       </div>
+      <Thea />
     </TheaProvider>
   );
 };

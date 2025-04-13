@@ -1,3 +1,4 @@
+
 import * as React from "react"
 import * as LabelPrimitive from "@radix-ui/react-label"
 import { Slot } from "@radix-ui/react-slot"
@@ -164,6 +165,23 @@ const FormMessage = React.forwardRef<
 })
 FormMessage.displayName = "FormMessage"
 
+// Create a scrollable form container component
+const ScrollableForm = React.forwardRef<
+  HTMLFormElement, 
+  React.FormHTMLAttributes<HTMLFormElement>
+>(({ className, children, ...props }, ref) => {
+  return (
+    <form
+      ref={ref}
+      className={cn("max-h-[70vh] overflow-y-auto pr-3", className)}
+      {...props}
+    >
+      {children}
+    </form>
+  )
+})
+ScrollableForm.displayName = "ScrollableForm"
+
 export {
   useFormField,
   Form,
@@ -173,4 +191,5 @@ export {
   FormDescription,
   FormMessage,
   FormField,
+  ScrollableForm
 }

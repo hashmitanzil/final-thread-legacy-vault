@@ -66,7 +66,7 @@
   
   /* Curved buttons */
   .curved-button {
-    @apply rounded-full bg-gradient-to-r from-purple-600 to-indigo-600 
+    @apply rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 
            hover:from-purple-700 hover:to-indigo-700 text-white 
            shadow-md hover:shadow-lg transition-all duration-300
            transform hover:-translate-y-1;
@@ -140,6 +140,7 @@ html {
 /* Add animation to buttons */
 button {
   transition: transform 0.2s ease, box-shadow 0.2s ease;
+  border-radius: 10px;
 }
 
 button:hover:not(:disabled) {
@@ -169,5 +170,27 @@ button:active:not(:disabled) {
 
 /* Form container improvements */
 .form-container {
+  @apply max-h-[70vh] overflow-y-auto pr-3;
+}
+
+/* Dropdown menus fix */
+.radix-dropdown-content,
+[data-radix-popper-content-wrapper] {
+  @apply bg-white dark:bg-gray-800 !important;
+  opacity: 1 !important;
+  z-index: 999 !important;
+}
+
+/* Scrollable form override */
+form {
   @apply max-h-[70vh] overflow-y-auto;
+}
+
+/* Radix dropdown content overrides */
+.radix-dropdown-content,
+[data-radix-popper-content-wrapper],
+[role="menu"],
+[role="listbox"] {
+  @apply bg-white dark:bg-gray-800 !important;
+  z-index: 9999 !important;
 }

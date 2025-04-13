@@ -1,7 +1,7 @@
 
 import React, { useEffect } from 'react';
 import { motion, useAnimation } from 'framer-motion';
-import { MessageSquare, X, Sparkles, Bot } from 'lucide-react';
+import { MessageSquare, X, Bot } from 'lucide-react';
 import { useThea } from '@/contexts/TheaContext';
 import { cn } from '@/lib/utils';
 
@@ -43,7 +43,7 @@ const TheaAvatar: React.FC<TheaAvatarProps> = ({
   return (
     <motion.div
       className={cn(
-        'rounded-full flex items-center justify-center cursor-pointer relative z-50 overflow-hidden',
+        'rounded-full flex items-center justify-center cursor-pointer relative z-[9999] overflow-hidden fixed bottom-4 right-4',
         sizeClasses[size],
         isMinimized 
           ? 'bg-gradient-to-br from-purple-600 to-pink-500 shadow-[0_0_15px_rgba(139,92,246,0.7)]' 
@@ -61,32 +61,6 @@ const TheaAvatar: React.FC<TheaAvatarProps> = ({
       whileTap={{ scale: 0.95 }}
       onClick={onClick || toggleChat}
     >
-      {/* Animated background effects */}
-      <div className="absolute inset-0 bg-gradient-radial from-purple-400/50 to-transparent"></div>
-      <div className="absolute inset-0 rounded-full bg-purple-400/20 animate-ping-slow"></div>
-      
-      {/* Sparkle effects */}
-      {!isChatOpen && (
-        <>
-          <motion.div
-            className="absolute top-0 right-0"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: [0, 1, 0] }}
-            transition={{ duration: 2, repeat: Infinity, repeatType: "reverse" }}
-          >
-            <Sparkles className="text-yellow-300 h-4 w-4" />
-          </motion.div>
-          <motion.div
-            className="absolute bottom-1 left-1"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: [0, 1, 0] }}
-            transition={{ duration: 2, delay: 1, repeat: Infinity, repeatType: "reverse" }}
-          >
-            <Sparkles className="text-cyan-300 h-3 w-3" />
-          </motion.div>
-        </>
-      )}
-      
       {isChatOpen ? (
         <motion.div
           initial={{ rotate: 0 }}
@@ -97,7 +71,7 @@ const TheaAvatar: React.FC<TheaAvatarProps> = ({
         </motion.div>
       ) : (
         <div className="w-full h-full flex items-center justify-center">
-          <Bot className="h-8 w-8 text-white z-10 drop-shadow-lg" />
+          <Bot className="h-10 w-10 text-white z-10 drop-shadow-lg" />
         </div>
       )}
     </motion.div>
