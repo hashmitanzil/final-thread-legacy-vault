@@ -1,7 +1,9 @@
+
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import { toast } from '@/hooks/use-toast';
 
+// Define the types for our messages
 type Message = {
   id: string;
   text: string;
@@ -9,12 +11,14 @@ type Message = {
   timestamp: Date;
 };
 
+// Define scroll triggers
 type ScrollTrigger = {
   sectionId: string;
   message: string;
   triggered: boolean;
 };
 
+// Define the context interface
 interface TheaContextType {
   isIntroShown: boolean;
   isMinimized: boolean;
@@ -31,6 +35,7 @@ interface TheaContextType {
   resetIntro: () => void;
 }
 
+// Create a default context
 const defaultContext: TheaContextType = {
   isIntroShown: false,
   isMinimized: true,
@@ -47,8 +52,10 @@ const defaultContext: TheaContextType = {
   resetIntro: () => {},
 };
 
+// Create the context
 const TheaContext = createContext<TheaContextType>(defaultContext);
 
+// Hook to use the context
 export const useThea = () => useContext(TheaContext);
 
 // Application knowledge base
@@ -130,9 +137,30 @@ const appKnowledge = {
       question: 'What happens if I lose my password?',
       answer: 'We have a secure password recovery process that requires verification of your identity. Your data remains safe during this process.'
     }
-  ]
+  ],
+  messages: {
+    creation: 'To create a legacy message, go to the Messages section, click "Create New Message", then fill in the recipient details, message content, and delivery conditions.',
+    types: 'You can create text messages, audio recordings, video messages, or mixed media messages with attachments.',
+    delivery: 'Messages can be delivered based on inactivity (proof of life), on specific dates, or manually by your trusted contacts.'
+  },
+  digital_assets: {
+    storage: 'Our Digital Asset Vault provides secure, encrypted storage for your important files, photos, videos, and documents.',
+    sharing: 'You can control exactly which trusted contacts have access to specific assets in your vault.',
+    organization: 'Assets can be organized with tags, categories, and notes to make them easy to find and understand.'
+  },
+  trusted_contacts: {
+    adding: 'To add a trusted contact, go to the Trusted Contacts section and click "Add New Contact". Enter their details and set their permissions.',
+    verification: 'Your trusted contacts will receive an email asking them to confirm their relationship with you.',
+    permissions: 'You can set different permission levels for each trusted contact, controlling what they can access and when.'
+  },
+  user_experience: {
+    navigation: 'The main navigation is on the left side of the screen. Click on the menu items to access different sections of your account.',
+    dashboard: 'Your dashboard gives you an overview of your legacy setup, including your messages, contacts, and system status.',
+    notifications: 'You\'ll receive notifications about important events, such as when a trusted contact confirms their relationship or when a proof of life check is approaching.'
+  }
 };
 
+// Provider component
 export const TheaProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isIntroShown, setIsIntroShown] = useState(false);
   const [isMinimized, setIsMinimized] = useState(true);
@@ -253,7 +281,7 @@ export const TheaProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [location.pathname, scrollTriggers]);
 
-  // Process user message and generate response
+  // Enhanced message processing with more comprehensive knowledge base
   const processUserMessage = (text: string): string => {
     // Convert the text to lowercase for easier matching
     const input = text.toLowerCase();
@@ -283,6 +311,56 @@ export const TheaProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return faqMatch.answer;
     }
     
+    // Check for message-related questions
+    if (input.includes('message') || input.includes('letter') || input.includes('note')) {
+      if (input.includes('create') || input.includes('make') || input.includes('write')) {
+        return appKnowledge.messages.creation;
+      } else if (input.includes('type') || input.includes('kind')) {
+        return appKnowledge.messages.types;
+      } else if (input.includes('deliver') || input.includes('send')) {
+        return appKnowledge.messages.delivery;
+      } else {
+        return `${appKnowledge.messages.creation}\n\n${appKnowledge.messages.types}\n\n${appKnowledge.messages.delivery}`;
+      }
+    }
+    
+    // Check for digital asset questions
+    if (input.includes('digital asset') || input.includes('vault') || input.includes('file') || input.includes('storage') || input.includes('photo')) {
+      if (input.includes('store') || input.includes('upload')) {
+        return appKnowledge.digital_assets.storage;
+      } else if (input.includes('share') || input.includes('access')) {
+        return appKnowledge.digital_assets.sharing;
+      } else if (input.includes('organize') || input.includes('find')) {
+        return appKnowledge.digital_assets.organization;
+      } else {
+        return `${appKnowledge.digital_assets.storage}\n\n${appKnowledge.digital_assets.sharing}\n\n${appKnowledge.digital_assets.organization}`;
+      }
+    }
+    
+    // Check for trusted contact questions
+    if (input.includes('trusted') || input.includes('contact') || input.includes('recipient')) {
+      if (input.includes('add') || input.includes('create') || input.includes('new')) {
+        return appKnowledge.trusted_contacts.adding;
+      } else if (input.includes('verify') || input.includes('confirm')) {
+        return appKnowledge.trusted_contacts.verification;
+      } else if (input.includes('permission') || input.includes('access') || input.includes('allow')) {
+        return appKnowledge.trusted_contacts.permissions;
+      } else {
+        return `${appKnowledge.trusted_contacts.adding}\n\n${appKnowledge.trusted_contacts.verification}\n\n${appKnowledge.trusted_contacts.permissions}`;
+      }
+    }
+    
+    // Check for navigation/UX questions
+    if (input.includes('navigate') || input.includes('find') || input.includes('where') || input.includes('how to')) {
+      if (input.includes('dashboard')) {
+        return appKnowledge.user_experience.dashboard;
+      } else if (input.includes('notification')) {
+        return appKnowledge.user_experience.notifications;
+      } else {
+        return appKnowledge.user_experience.navigation;
+      }
+    }
+    
     // Generic responses based on keywords
     if (input.includes('hello') || input.includes('hi')) {
       return "Hello! How can I help you with your digital legacy today?";
@@ -292,10 +370,6 @@ export const TheaProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return "I'm here to help! You can ask me about features, how to set up your legacy, or navigate to specific sections.";
     } else if (input.includes('dashboard')) {
       return "The dashboard gives you an overview of your legacy setup. Would you like me to help you navigate there?";
-    } else if (input.includes('message') || input.includes('letter')) {
-      return "Legacy messages let you create heartfelt communications for your loved ones. Would you like to create one?";
-    } else if (input.includes('contact') || input.includes('trusted')) {
-      return "Trusted contacts are people who will receive your legacy. You can add them in the Trusted Contacts section.";
     } else if (input.includes('export')) {
       return "You can export your data as a ZIP archive or PDF report from the Export section. This creates a backup of your digital legacy.";
     } else if (input.includes('google login') || input.includes('sign in with google')) {
@@ -303,7 +377,7 @@ export const TheaProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } else if (input.includes('two factor') || input.includes('2fa')) {
       return "Two-factor authentication adds an extra layer of security. You can enable it in your Account Settings.";
     } else {
-      return "I'm still learning! If you have specific questions about Final Thread, I'll do my best to help.";
+      return "I'm still learning! If you have specific questions about Final Thread, I'll do my best to help. You can ask about messages, digital assets, trusted contacts, or how to navigate the platform.";
     }
   };
 

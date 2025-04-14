@@ -381,7 +381,7 @@ const HelpCenterPage: React.FC = () => {
                   className="flex items-center gap-2 data-[state=active]:bg-purple-100 data-[state=active]:text-purple-700 dark:data-[state=active]:bg-purple-900 dark:data-[state=active]:text-purple-200 rounded-lg transition-all duration-300"
                 >
                   {category.icon}
-                  {category.category}
+                  <span className="truncate max-w-[100px]">{category.category}</span>
                 </TabsTrigger>
               ))}
             </TabsList>
@@ -409,7 +409,7 @@ const HelpCenterPage: React.FC = () => {
                               activeArticle === article.id ? 'bg-primary/10 text-primary font-medium' : ''
                             }`}
                           >
-                            <span className="flex-1">{article.title}</span>
+                            <span className="flex-1 truncate">{article.title}</span>
                             <ChevronRight className={`h-4 w-4 transition-transform duration-300 ${activeArticle === article.id ? 'rotate-90 text-primary' : 'opacity-50'}`} />
                           </button>
                           <Separator />

@@ -5,6 +5,7 @@ import { MessageSquare, Sparkles, X } from 'lucide-react';
 import { useThea } from '@/contexts/TheaContext';
 import { cn } from '@/lib/utils';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 
 interface TheaAvatarProps {
   size?: 'sm' | 'md' | 'lg';
@@ -101,14 +102,21 @@ const TheaAvatar: React.FC<TheaAvatarProps> = ({
               <X className="text-white h-6 w-6 z-10 drop-shadow-lg" />
             </motion.div>
           ) : (
-            <motion.div 
-              className="absolute inset-0 flex items-center justify-center"
-              initial={{ y: 5, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              transition={{ duration: 0.3 }}
-            >
-              <Sparkles className="h-10 w-10 text-white z-10 drop-shadow-lg" />
-            </motion.div>
+            <>
+              <motion.div 
+                className="absolute inset-0 flex items-center justify-center"
+                initial={{ y: 5, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ duration: 0.3 }}
+              >
+                <Avatar className="w-14 h-14 border-2 border-white/30">
+                  <AvatarImage src="https://i.imgur.com/WLtEBnI.png" alt="Thea" />
+                  <AvatarFallback className="bg-purple-600 text-white text-lg font-medium">
+                    <Sparkles className="h-7 w-7 text-white" />
+                  </AvatarFallback>
+                </Avatar>
+              </motion.div>
+            </>
           )}
           
           {/* Animated glow effect */}
@@ -166,7 +174,12 @@ const TheaAvatar: React.FC<TheaAvatarProps> = ({
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3 }}
         >
-          <Sparkles className="h-5 w-5 text-purple-500 mt-1 shrink-0" />
+          <Avatar className="h-8 w-8 shrink-0">
+            <AvatarImage src="https://i.imgur.com/WLtEBnI.png" alt="Thea" />
+            <AvatarFallback className="bg-purple-600 text-white">
+              <Sparkles className="h-4 w-4" />
+            </AvatarFallback>
+          </Avatar>
           <div>
             <p className="text-sm font-medium mb-1">Thea</p>
             <p className="text-sm text-gray-700 dark:text-gray-200">
