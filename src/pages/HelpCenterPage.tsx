@@ -1,6 +1,6 @@
 
-import React, { useState, useRef } from 'react';
-import { motion } from 'framer-motion';
+import React, { useState, useRef, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { 
   FileText, 
   Mail, 
@@ -11,12 +11,19 @@ import {
   Clock, 
   Shield, 
   Search,
-  ChevronRight
+  ChevronRight,
+  ArrowRight,
+  HelpCircle,
+  BookOpen as BookIcon,
+  ExternalLink,
+  CheckCircle
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
+import { Badge } from '@/components/ui/badge';
+import { useNavigate } from 'react-router-dom';
 
 // Documentation content data structure
 const documentationContent = [
@@ -253,6 +260,7 @@ const HelpCenterPage: React.FC = () => {
   const [activeArticle, setActiveArticle] = useState('welcome');
   const [searchQuery, setSearchQuery] = useState('');
   const articleRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
+  const navigate = useNavigate();
   
   // Filter articles based on search query
   const filteredCategories = searchQuery 
@@ -279,11 +287,55 @@ const HelpCenterPage: React.FC = () => {
     }
   };
 
+  // Animation variants for page elements
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: { 
+      opacity: 1,
+      transition: { 
+        staggerChildren: 0.1,
+        delayChildren: 0.2
+      }
+    }
+  };
+  
+  const itemVariants = {
+    hidden: { y: 20, opacity: 0 },
+    visible: { 
+      y: 0, 
+      opacity: 1,
+      transition: { 
+        type: "spring", 
+        stiffness: 100 
+      }
+    }
+  };
+
+  // Effect to highlight search terms
+  useEffect(() => {
+    if (searchQuery && currentArticle) {
+      const contentElements = document.querySelectorAll('.prose p, .prose li, .prose h2, .prose h3, .prose h4');
+      
+      contentElements.forEach(element => {
+        const originalText = element.textContent || '';
+        if (originalText.toLowerCase().includes(searchQuery.toLowerCase())) {
+          const regex = new RegExp(`(${searchQuery})`, 'gi');
+          element.innerHTML = originalText.replace(regex, '<mark class="bg-yellow-200 dark:bg-yellow-900 px-1 rounded">$1</mark>');
+        }
+      });
+    }
+  }, [searchQuery, currentArticle]);
+
   return (
-    <div className="container mx-auto px-4 py-12">
-      <div className="flex flex-col md:flex-row justify-between mb-8">
+    <motion.div 
+      initial="hidden"
+      animate="visible"
+      variants={containerVariants}
+      className="container mx-auto px-4 py-12"
+    >
+      <motion.div variants={itemVariants} className="flex flex-col md:flex-row justify-between mb-8 gap-4">
         <div>
-          <h1 className="text-3xl font-bold">Help Center</h1>
+          <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-purple-600 to-blue-600">Help Center</h1>
           <p className="text-muted-foreground mt-2">
             Find answers to frequently asked questions and learn how to use Final Thread.
           </p>
@@ -292,41 +344,41 @@ const HelpCenterPage: React.FC = () => {
           <Button 
             variant="outline" 
             onClick={() => window.open('/documentation.pdf', '_blank')}
-            className="flex items-center gap-2"
+            className="flex items-center gap-2 hover-lift"
           >
             <FileText className="h-4 w-4" />
             View Documentation
           </Button>
           <Button 
             variant="default"
-            onClick={() => window.open('/contact', '_self')}
-            className="flex items-center gap-2"
+            onClick={() => navigate('/contact')}
+            className="flex items-center gap-2 hover-lift bg-gradient-to-r from-purple-600 to-blue-600"
           >
             <Mail className="h-4 w-4" />
             Contact Support
           </Button>
         </div>
-      </div>
+      </motion.div>
 
-      <div className="relative mb-8">
+      <motion.div variants={itemVariants} className="relative mb-8">
         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
         <Input
           placeholder="Search for help articles..."
-          className="pl-10 py-6 text-lg"
+          className="pl-10 py-6 text-lg rounded-xl shadow-md hover:shadow-lg transition-shadow duration-300"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
         />
-      </div>
+      </motion.div>
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-        <div className="lg:col-span-1">
+        <motion.div variants={itemVariants} className="lg:col-span-1">
           <Tabs defaultValue={activeCategory} value={activeCategory} onValueChange={setActiveCategory}>
-            <TabsList className="flex flex-wrap justify-start mb-4">
+            <TabsList className="flex flex-wrap justify-start mb-4 border-none">
               {documentationContent.map((category) => (
                 <TabsTrigger 
                   key={category.id} 
                   value={category.id}
-                  className="flex items-center gap-2"
+                  className="flex items-center gap-2 data-[state=active]:bg-purple-100 data-[state=active]:text-purple-700 dark:data-[state=active]:bg-purple-900 dark:data-[state=active]:text-purple-200 rounded-lg transition-all duration-300"
                 >
                   {category.icon}
                   {category.category}
@@ -334,79 +386,141 @@ const HelpCenterPage: React.FC = () => {
               ))}
             </TabsList>
 
-            {filteredCategories.map((category) => (
-              <TabsContent key={category.id} value={category.id} className="mt-0">
-                <div className="border rounded-lg overflow-hidden">
-                  <h3 className="font-medium px-4 py-3 bg-muted text-lg flex items-center">
-                    {category.icon}
-                    <span className="ml-2">{category.category}</span>
-                  </h3>
-                  <ul>
-                    {category.articles.map((article) => (
-                      <li key={article.id}>
-                        <button
-                          onClick={() => scrollToArticle(article.id)}
-                          className={`w-full text-left px-4 py-3 flex items-center hover:bg-muted transition-colors ${
-                            activeArticle === article.id ? 'bg-primary/10 text-primary font-medium' : ''
-                          }`}
-                        >
-                          <span className="flex-1">{article.title}</span>
-                          <ChevronRight className="h-4 w-4 opacity-50" />
-                        </button>
-                        <Separator />
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </TabsContent>
-            ))}
+            <AnimatePresence mode="wait">
+              {filteredCategories.map((category) => (
+                <TabsContent key={category.id} value={category.id} className="mt-0 relative">
+                  <motion.div 
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: 20 }}
+                    transition={{ duration: 0.3 }}
+                    className="border rounded-lg overflow-hidden shadow-md hover:shadow-lg transition-shadow duration-300"
+                  >
+                    <h3 className="font-medium px-4 py-3 bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 text-lg flex items-center">
+                      {category.icon}
+                      <span className="ml-2">{category.category}</span>
+                    </h3>
+                    <ul className="max-h-[60vh] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
+                      {category.articles.map((article) => (
+                        <li key={article.id}>
+                          <button
+                            onClick={() => scrollToArticle(article.id)}
+                            className={`w-full text-left px-4 py-3 flex items-center hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-colors duration-300 ${
+                              activeArticle === article.id ? 'bg-primary/10 text-primary font-medium' : ''
+                            }`}
+                          >
+                            <span className="flex-1">{article.title}</span>
+                            <ChevronRight className={`h-4 w-4 transition-transform duration-300 ${activeArticle === article.id ? 'rotate-90 text-primary' : 'opacity-50'}`} />
+                          </button>
+                          <Separator />
+                        </li>
+                      ))}
+                    </ul>
+                  </motion.div>
+                </TabsContent>
+              ))}
+            </AnimatePresence>
           </Tabs>
-        </div>
+        </motion.div>
 
-        <div className="lg:col-span-3">
-          <div className="bg-card rounded-lg border shadow-sm p-6">
+        <motion.div variants={itemVariants} className="lg:col-span-3">
+          <div className="bg-card rounded-lg border shadow-sm p-6 hover:shadow-md transition-shadow duration-300">
             {currentArticle ? (
               <motion.div
                 key={currentArticle.id}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3 }}
+                transition={{ duration: 0.5, type: "spring" }}
                 ref={(el) => (articleRefs.current[currentArticle.id] = el)}
               >
+                <div className="flex items-center gap-2 mb-4">
+                  <Badge variant="outline" className="bg-purple-50 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">
+                    {documentationContent.find(cat => cat.articles.some(art => art.id === currentArticle.id))?.category}
+                  </Badge>
+                  <span className="text-muted-foreground text-sm">Article ID: {currentArticle.id}</span>
+                </div>
                 <ArticleContent html={currentArticle.content} />
+                
+                <div className="mt-8 border-t pt-4 flex justify-between items-center">
+                  <div className="text-sm text-muted-foreground">
+                    Last updated: April 14, 2025
+                  </div>
+                  <div className="flex gap-4">
+                    <Button variant="outline" size="sm" className="flex items-center gap-2">
+                      <HelpCircle className="h-4 w-4" />
+                      Was this helpful?
+                    </Button>
+                    <Button variant="ghost" size="sm" className="flex items-center gap-2">
+                      <ExternalLink className="h-4 w-4" />
+                      Share
+                    </Button>
+                  </div>
+                </div>
               </motion.div>
             ) : (
               <div className="text-center py-12">
-                <h3 className="text-xl font-medium mb-2">No articles found</h3>
-                <p className="text-muted-foreground">Try adjusting your search query</p>
+                <motion.div
+                  initial={{ scale: 0.8, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  transition={{ duration: 0.3 }}
+                >
+                  <SearchIcon className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
+                  <h3 className="text-xl font-medium mb-2">No articles found</h3>
+                  <p className="text-muted-foreground">Try adjusting your search query</p>
+                </motion.div>
               </div>
             )}
           </div>
-        </div>
+        </motion.div>
       </div>
 
-      <div className="mt-12 bg-muted/50 rounded-lg p-8 text-center">
-        <h2 className="text-2xl font-bold mb-4">Still need help?</h2>
+      <motion.div 
+        variants={itemVariants} 
+        className="mt-12 bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 rounded-lg p-8 text-center shadow-md"
+      >
+        <h2 className="text-2xl font-bold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-purple-600 to-blue-600">Still need help?</h2>
         <p className="mb-6 max-w-2xl mx-auto">
           Our support team is available to assist you with any questions or issues not covered in our documentation.
         </p>
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
-          <Button onClick={() => window.open('/contact', '_self')} className="flex items-center gap-2 px-6">
+          <Button onClick={() => navigate('/contact')} className="flex items-center gap-2 px-6 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 hover-lift">
             <Mail className="h-4 w-4" />
             Contact Support
           </Button>
-          <Button variant="outline" className="flex items-center gap-2 px-6">
+          <Button variant="outline" className="flex items-center gap-2 px-6 hover-lift">
             <Clock className="h-4 w-4" />
             View FAQ
           </Button>
-          <Button variant="secondary" className="flex items-center gap-2 px-6">
+          <Button variant="secondary" className="flex items-center gap-2 px-6 hover-lift">
             <Shield className="h-4 w-4" />
             Privacy & Security
           </Button>
         </div>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 };
+
+// Custom search icon with animation
+const SearchIcon = ({ className }: { className?: string }) => (
+  <motion.svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="24"
+    height="24"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+    initial={{ pathLength: 0 }}
+    animate={{ pathLength: 1 }}
+    transition={{ duration: 1, ease: "easeInOut" }}
+  >
+    <circle cx="11" cy="11" r="8" />
+    <line x1="21" y1="21" x2="16.65" y2="16.65" />
+  </motion.svg>
+);
 
 export default HelpCenterPage;

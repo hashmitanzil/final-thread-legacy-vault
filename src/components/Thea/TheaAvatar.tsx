@@ -38,6 +38,29 @@ const TheaAvatar: React.FC<TheaAvatarProps> = ({
     
     return () => clearInterval(interval);
   }, [isMinimized, isChatOpen, controls]);
+
+  // Pulsing animation when speaking
+  useEffect(() => {
+    if (isSpeaking) {
+      controls.start({
+        boxShadow: [
+          '0 0 15px rgba(139,92,246,0.7)',
+          '0 0 25px rgba(139,92,246,0.9)',
+          '0 0 15px rgba(139,92,246,0.7)'
+        ],
+        transition: { 
+          duration: 1.5, 
+          repeat: Infinity, 
+          repeatType: 'reverse' 
+        }
+      });
+    } else {
+      controls.stop();
+      controls.start({
+        boxShadow: '0 0 15px rgba(139,92,246,0.7)'
+      });
+    }
+  }, [isSpeaking, controls]);
   
   const sizeClasses = {
     sm: 'w-10 h-10',
@@ -50,21 +73,21 @@ const TheaAvatar: React.FC<TheaAvatarProps> = ({
       <PopoverTrigger asChild>
         <motion.div
           className={cn(
-            'rounded-full flex items-center justify-center cursor-pointer relative z-[9999] overflow-hidden fixed bottom-6 right-6',
+            'rounded-full flex items-center justify-center cursor-pointer relative z-[9999] overflow-hidden shadow-lg border-2 border-white/20',
             sizeClasses[size],
             isMinimized 
-              ? 'bg-gradient-to-br from-purple-600 to-pink-500 shadow-[0_0_15px_rgba(139,92,246,0.7)]' 
-              : 'bg-gradient-to-br from-purple-500 to-indigo-600 shadow-[0_0_20px_rgba(139,92,246,0.8)]',
-            'shadow-lg border-2 border-white/20 avatar-glow',
+              ? 'bg-gradient-to-br from-purple-600 to-pink-500' 
+              : 'bg-gradient-to-br from-purple-500 to-indigo-600',
+            'shadow-lg border-2 border-white/20',
             className
           )}
           initial={{ scale: 0.8, opacity: 0 }}
-          animate={{
-            scale: 1,
-            opacity: 1,
-            ...controls
+          animate={controls}
+          whileHover={{ 
+            scale: 1.1, 
+            boxShadow: '0 0 25px rgba(147, 51, 234, 0.9)',
+            transition: { duration: 0.3 }
           }}
-          whileHover={{ scale: 1.1, boxShadow: '0 0 25px rgba(147, 51, 234, 0.9)' }}
           whileTap={{ scale: 0.95 }}
           onClick={onClick || toggleChat}
         >
@@ -73,13 +96,62 @@ const TheaAvatar: React.FC<TheaAvatarProps> = ({
               initial={{ rotate: 0 }}
               animate={{ rotate: 360 }}
               transition={{ duration: 0.5 }}
+              className="absolute inset-0 flex items-center justify-center"
             >
               <X className="text-white h-6 w-6 z-10 drop-shadow-lg" />
             </motion.div>
           ) : (
-            <div className="w-full h-full flex items-center justify-center">
+            <motion.div 
+              className="absolute inset-0 flex items-center justify-center"
+              initial={{ y: 5, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ duration: 0.3 }}
+            >
               <Sparkles className="h-10 w-10 text-white z-10 drop-shadow-lg" />
-            </div>
+            </motion.div>
+          )}
+          
+          {/* Animated glow effect */}
+          <motion.div
+            className="absolute inset-0 bg-purple-500 rounded-full opacity-20"
+            animate={{
+              scale: [1, 1.2, 1],
+              opacity: [0.2, 0.3, 0.2]
+            }}
+            transition={{
+              duration: 3,
+              repeat: Infinity,
+              repeatType: "reverse"
+            }}
+          />
+          
+          {/* Particles effect around the button */}
+          {isMinimized && !isChatOpen && (
+            <>
+              {[...Array(5)].map((_, i) => (
+                <motion.div
+                  key={i}
+                  className="absolute w-2 h-2 bg-white rounded-full"
+                  initial={{ 
+                    x: 0, 
+                    y: 0, 
+                    opacity: 0.7 
+                  }}
+                  animate={{ 
+                    x: Math.random() * 60 - 30, 
+                    y: Math.random() * 60 - 30, 
+                    opacity: 0,
+                    scale: Math.random() * 0.5 + 0.5
+                  }}
+                  transition={{ 
+                    duration: Math.random() * 2 + 1, 
+                    repeat: Infinity, 
+                    repeatType: "loop", 
+                    delay: i * 0.2
+                  }}
+                />
+              ))}
+            </>
           )}
         </motion.div>
       </PopoverTrigger>
@@ -88,7 +160,12 @@ const TheaAvatar: React.FC<TheaAvatarProps> = ({
         side="left"
         sideOffset={20}
       >
-        <div className="flex items-start gap-3">
+        <motion.div 
+          className="flex items-start gap-3"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3 }}
+        >
           <Sparkles className="h-5 w-5 text-purple-500 mt-1 shrink-0" />
           <div>
             <p className="text-sm font-medium mb-1">Thea</p>
@@ -96,7 +173,7 @@ const TheaAvatar: React.FC<TheaAvatarProps> = ({
               {mostRecentMessage?.text}
             </p>
           </div>
-        </div>
+        </motion.div>
       </PopoverContent>
     </Popover>
   );
