@@ -4,21 +4,8 @@ import Navigation from './Navigation';
 import Footer from './Footer';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { User } from '@supabase/supabase-js';
-import { TheaProvider } from '@/contexts/TheaContext';
-import Thea from './Thea/Thea';
 
-interface LayoutProps {
-  children: React.ReactNode;
-}
-
-interface ExtendedUser extends User {
-  name?: string;
-  email: string;
-  avatar?: string;
-}
-
-const Layout: React.FC<LayoutProps> = ({ children }) => {
+const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   
@@ -39,20 +26,17 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   };
 
   return (
-    <TheaProvider>
-      <div className="flex flex-col min-h-screen">
-        <Navigation 
-          user={formattedUser} 
-          onLogin={handleLogin} 
-          onLogout={handleLogout} 
-        />
-        <main className="flex-1">
-          {children}
-        </main>
-        <Footer />
-      </div>
-      <Thea />
-    </TheaProvider>
+    <div className="flex flex-col min-h-screen">
+      <Navigation 
+        user={formattedUser} 
+        onLogin={handleLogin} 
+        onLogout={handleLogout} 
+      />
+      <main className="flex-1">
+        {children}
+      </main>
+      <Footer />
+    </div>
   );
 };
 
