@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -7,6 +8,7 @@ import { toast } from '@/components/ui/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { EOLInstructions } from '@/types/database';
+import WishesList from '@/components/WishesList';
 import { 
   Card, 
   CardContent, 
@@ -201,7 +203,7 @@ const EndOfLifePage: React.FC = () => {
                   <Tabs value={activeTab} onValueChange={setActiveTab}>
                     <TabsList className="grid w-full grid-cols-3">
                       <TabsTrigger value="funeral">Funeral Preferences</TabsTrigger>
-                      <TabsTrigger value="medical">Medical Wishes</TabsTrigger>
+                      <TabsTrigger value="wishes">Wishes</TabsTrigger>
                       <TabsTrigger value="final">Final Message</TabsTrigger>
                     </TabsList>
                     
@@ -228,41 +230,52 @@ const EndOfLifePage: React.FC = () => {
                       />
                     </TabsContent>
                     
-                    <TabsContent value="medical" className="space-y-4 pt-4">
-                      <FormField
-                        control={form.control}
-                        name="organ_donation"
-                        render={({ field }) => (
-                          <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                            <div className="space-y-0.5">
-                              <FormLabel className="text-base">Organ Donation</FormLabel>
-                              <FormDescription>
-                                I wish to be an organ donor and give the gift of life
-                              </FormDescription>
-                            </div>
-                            <FormControl>
-                              <Switch
-                                checked={field.value}
-                                onCheckedChange={field.onChange}
-                              />
-                            </FormControl>
-                          </FormItem>
-                        )}
-                      />
-                      
-                      <div className="rounded-lg border p-4">
-                        <h3 className="font-medium mb-2 flex items-center">
-                          <Info className="h-4 w-4 mr-2" />
-                          Additional Medical Documents
-                        </h3>
-                        <p className="text-sm text-muted-foreground mb-4">
-                          Upload important medical documentation such as living will, 
-                          DNR orders, or healthcare proxy in the Digital Asset Vault.
-                        </p>
-                        <Button variant="outline" onClick={() => window.location.href = '/digital-assets'}>
-                          <FileText className="h-4 w-4 mr-2" />
-                          Go to Digital Vault
-                        </Button>
+                    <TabsContent value="wishes" className="space-y-4 pt-4">
+                      <div className="space-y-4">
+                        <div>
+                          <h3 className="text-lg font-medium mb-2">My Personal Wishes</h3>
+                          <p className="text-sm text-muted-foreground mb-4">
+                            Document your personal wishes, requests, and hopes. These will be saved individually and can be edited or deleted as needed.
+                          </p>
+                        </div>
+                        
+                        <WishesList />
+                        
+                        <FormField
+                          control={form.control}
+                          name="organ_donation"
+                          render={({ field }) => (
+                            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4 mt-6">
+                              <div className="space-y-0.5">
+                                <FormLabel className="text-base">Organ Donation</FormLabel>
+                                <FormDescription>
+                                  I wish to be an organ donor and give the gift of life
+                                </FormDescription>
+                              </div>
+                              <FormControl>
+                                <Switch
+                                  checked={field.value}
+                                  onCheckedChange={field.onChange}
+                                />
+                              </FormControl>
+                            </FormItem>
+                          )}
+                        />
+                        
+                        <div className="rounded-lg border p-4">
+                          <h3 className="font-medium mb-2 flex items-center">
+                            <Info className="h-4 w-4 mr-2" />
+                            Additional Documents
+                          </h3>
+                          <p className="text-sm text-muted-foreground mb-4">
+                            Upload important documentation such as living will, 
+                            DNR orders, or healthcare proxy in the Digital Asset Vault.
+                          </p>
+                          <Button variant="outline" onClick={() => window.location.href = '/digital-assets'}>
+                            <FileText className="h-4 w-4 mr-2" />
+                            Go to Digital Vault
+                          </Button>
+                        </div>
                       </div>
                     </TabsContent>
                     
@@ -343,7 +356,7 @@ const EndOfLifePage: React.FC = () => {
                     <Button 
                       type="button" 
                       variant="outline"
-                      onClick={() => setActiveTab(activeTab === 'funeral' ? 'medical' : activeTab === 'medical' ? 'final' : 'funeral')}
+                      onClick={() => setActiveTab(activeTab === 'funeral' ? 'wishes' : activeTab === 'wishes' ? 'final' : 'funeral')}
                     >
                       {activeTab === 'final' ? 'Previous' : 'Next'}
                     </Button>

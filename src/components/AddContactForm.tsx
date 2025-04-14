@@ -1,195 +1,196 @@
 
-import React, { useState } from 'react';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import * as z from 'zod';
-import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/contexts/AuthContext';
-import { toast } from '@/components/ui/use-toast';
-import { 
-  Form, 
-  FormControl, 
-  FormDescription, 
-  FormField, 
-  FormItem, 
-  FormLabel, 
-  FormMessage 
-} from '@/components/ui/form';
-import { Input } from '@/components/ui/input';
+import React from 'react';
 import { Button } from '@/components/ui/button';
-import { 
+import { Input } from '@/components/ui/input';
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form';
+import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { Loader2 } from 'lucide-react';
+} from '@/components/ui/select';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { toast } from '@/components/ui/use-toast';
 
-const contactSchema = z.object({
-  name: z.string().min(2, 'Name must be at least 2 characters'),
-  email: z.string().email('Please enter a valid email address'),
+const formSchema = z.object({
+  name: z.string().min(1, 'Name is required'),
+  email: z.string().email('Invalid email address'),
   phone: z.string().optional(),
-  relationship: z.string().min(1, 'Please select a relationship')
+  relationship: z.string().optional(),
 });
 
-const AddContactForm = ({ onSuccess }: { onSuccess: () => void }) => {
+interface AddContactFormProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onSuccess?: () => void;
+}
+
+const AddContactForm: React.FC<AddContactFormProps> = ({ 
+  open, 
+  onOpenChange,
+  onSuccess
+}) => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const [isSubmitting, setIsSubmitting] = useState(false);
   
-  const form = useForm<z.infer<typeof contactSchema>>({
-    resolver: zodResolver(contactSchema),
+  const form = useForm<z.infer<typeof formSchema>>({
+    resolver: zodResolver(formSchema),
     defaultValues: {
       name: '',
       email: '',
       phone: '',
-      relationship: '',
+      relationship: 'family',
     },
   });
-  
+
   const addContactMutation = useMutation({
-    mutationFn: async (values: z.infer<typeof contactSchema>) => {
-      if (!user) throw new Error('You must be logged in to add a contact');
+    mutationFn: async (values: z.infer<typeof formSchema>) => {
+      if (!user) throw new Error('You must be logged in to add contacts');
       
-      setIsSubmitting(true);
+      const { data, error } = await supabase.from('trusted_contacts').insert({
+        user_id: user.id,
+        name: values.name,
+        email: values.email,
+        phone: values.phone || null,
+        relationship: values.relationship || null,
+      }).select();
       
-      try {
-        // Add contact to database
-        const { data, error } = await supabase
-          .from('trusted_contacts')
-          .insert({
-            user_id: user.id,
-            name: values.name,
-            email: values.email,
-            phone: values.phone || null,
-            relationship: values.relationship,
-          })
-          .select('*')
-          .single();
-          
-        if (error) throw error;
-        
-        // Send notification email (this would typically be done via a server function)
-        // For this simulation, we'll just log and show a success message
-        console.log(`Notification email would be sent to ${values.email}`);
-        
-        return data;
-      } finally {
-        setIsSubmitting(false);
-      }
+      if (error) throw error;
+      return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['trusted-contacts'] });
       toast({
-        title: 'Trusted contact added',
-        description: 'The contact has been added and will receive a notification email.',
+        title: 'Contact added',
+        description: 'Trusted contact has been successfully added.',
       });
       form.reset();
-      onSuccess();
+      onOpenChange(false);
+      if (onSuccess) onSuccess();
     },
     onError: (error) => {
       toast({
-        title: 'Failed to add contact',
-        description: error instanceof Error ? error.message : 'An unknown error occurred',
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to add contact',
         variant: 'destructive',
       });
-    }
+    },
   });
-  
-  const onSubmit = (values: z.infer<typeof contactSchema>) => {
+
+  function onSubmit(values: z.infer<typeof formSchema>) {
     addContactMutation.mutate(values);
-  };
-  
+  }
+
   return (
-    <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-        <FormField
-          control={form.control}
-          name="name"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Full Name</FormLabel>
-              <FormControl>
-                <Input placeholder="John Doe" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        
-        <FormField
-          control={form.control}
-          name="email"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Email Address</FormLabel>
-              <FormControl>
-                <Input type="email" placeholder="john@example.com" {...field} />
-              </FormControl>
-              <FormDescription>
-                They will receive a notification at this email address.
-              </FormDescription>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        
-        <FormField
-          control={form.control}
-          name="phone"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Phone Number (Optional)</FormLabel>
-              <FormControl>
-                <Input placeholder="+1 (555) 123-4567" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        
-        <FormField
-          control={form.control}
-          name="relationship"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Relationship</FormLabel>
-              <Select 
-                onValueChange={field.onChange} 
-                defaultValue={field.value}
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-[425px]">
+        <DialogHeader>
+          <DialogTitle>Add Trusted Contact</DialogTitle>
+          <DialogDescription>
+            Add someone you trust to have access to your legacy information.
+          </DialogDescription>
+        </DialogHeader>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <FormField
+              control={form.control}
+              name="name"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Full Name</FormLabel>
+                  <FormControl>
+                    <Input placeholder="John Doe" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="email"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Email</FormLabel>
+                  <FormControl>
+                    <Input type="email" placeholder="john@example.com" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="phone"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Phone (Optional)</FormLabel>
+                  <FormControl>
+                    <Input placeholder="555-123-4567" {...field} value={field.value || ''} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="relationship"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Relationship</FormLabel>
+                  <Select
+                    onValueChange={field.onChange}
+                    defaultValue={field.value}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select relationship" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="family">Family</SelectItem>
+                      <SelectItem value="friend">Friend</SelectItem>
+                      <SelectItem value="spouse">Spouse/Partner</SelectItem>
+                      <SelectItem value="legal">Legal Representative</SelectItem>
+                      <SelectItem value="other">Other</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <DialogFooter className="pt-4">
+              <Button 
+                type="submit" 
+                disabled={addContactMutation.isPending}
               >
-                <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select relationship" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  <SelectItem value="family">Family</SelectItem>
-                  <SelectItem value="spouse">Spouse/Partner</SelectItem>
-                  <SelectItem value="friend">Friend</SelectItem>
-                  <SelectItem value="attorney">Attorney</SelectItem>
-                  <SelectItem value="executor">Executor</SelectItem>
-                  <SelectItem value="advisor">Financial Advisor</SelectItem>
-                  <SelectItem value="other">Other</SelectItem>
-                </SelectContent>
-              </Select>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        
-        <Button 
-          type="submit" 
-          className="w-full"
-          disabled={isSubmitting}
-        >
-          {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          Add Trusted Contact
-        </Button>
-      </form>
-    </Form>
+                {addContactMutation.isPending ? 'Adding...' : 'Add Contact'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </Form>
+      </DialogContent>
+    </Dialog>
   );
 };
 

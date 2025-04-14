@@ -1,20 +1,38 @@
+
 import React, { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/integrations/supabase/client';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { TimeCapsule } from '@/types/database';
 import { toast } from '@/components/ui/use-toast';
-import FileUpload, { FileVisibility } from '@/components/FileUpload';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
+import { format, addDays } from 'date-fns';
+import { motion } from 'framer-motion';
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+  Calendar,
+  Clock,
+  Lock,
+  MessageSquare,
+  File as FileIcon,
+  PlusCircle,
+  ChevronDown,
+  Edit,
+  Trash2,
+  CalendarIcon,
+} from 'lucide-react';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form';
 import {
   Dialog,
   DialogContent,
@@ -25,580 +43,517 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import {
-  Archive,
-  FileSpreadsheet,
-  FileText,
-  Filter,
-  Folder,
-  Image,
-  Lock,
-  MoreHorizontal,
-  Plus,
-  Search,
-  Download,
-  FileLock2,
-  FileUp,
-  Trash2,
-  FileVideo,
-  FileAudio,
-  File,
-  Tag,
-  FileIcon
-} from 'lucide-react';
-import { format } from 'date-fns';
-import { motion } from 'framer-motion';
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import FileUpload from '@/components/FileUpload';
+import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 
-// Define types for digital assets
-interface DigitalAsset {
-  id: string;
-  name: string;
-  type: string;
-  size: string;
-  storage_path: string;
-  tags?: string[];
-  category?: string;
-  description?: string;
-  user_id: string;
-  created_at: string;
-  updated_at: string;
-  is_encrypted?: boolean;
-  last_accessed?: string;
-}
+// Form schema for creating a time capsule
+const createTimeCapsuleSchema = z.object({
+  title: z.string().min(1, 'Title is required'),
+  description: z.string().optional(),
+  type: z.enum(['message', 'file']),
+  content: z.string().optional(),
+  lockUntil: z.date().min(new Date(), 'Date must be in the future'),
+});
 
-const DigitalAssetVaultPage: React.FC = () => {
+const TimeCapsulePage: React.FC = () => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedFolder, setSelectedFolder] = useState('all');
-  const [showUploadDialog, setShowUploadDialog] = useState(false);
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<'message' | 'file'>('message');
+  const [unlockDialogOpen, setUnlockDialogOpen] = useState(false);
+  const [selectedCapsule, setSelectedCapsule] = useState<TimeCapsule | null>(null);
+  const [showCalendar, setShowCalendar] = useState(false);
 
-  // Fetch user's digital assets
-  const { data: assets, isLoading } = useQuery({
-    queryKey: ['digital-assets', user?.id],
+  // Create form
+  const form = useForm<z.infer<typeof createTimeCapsuleSchema>>({
+    resolver: zodResolver(createTimeCapsuleSchema),
+    defaultValues: {
+      title: '',
+      description: '',
+      type: 'message',
+      content: '',
+      lockUntil: addDays(new Date(), 7),
+    },
+  });
+
+  // Watch the type field to toggle tabs
+  const watchType = form.watch('type');
+  React.useEffect(() => {
+    setActiveTab(watchType);
+  }, [watchType]);
+
+  // Fetch time capsules
+  const { data: timeCapsules, isLoading } = useQuery({
+    queryKey: ['time-capsules', user?.id],
     queryFn: async () => {
       if (!user) return [];
 
       const { data, error } = await supabase
-        .from('digital_assets')
+        .from('time_capsules')
         .select('*')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      return data as DigitalAsset[];
+      return data as TimeCapsule[];
     },
     enabled: !!user,
   });
 
-  // Create a storage bucket if it doesn't exist
-  const { isLoading: isCreatingBucket } = useQuery({
-    queryKey: ['create-bucket'],
-    queryFn: async () => {
-      try {
-        // Try to create the bucket (this will fail silently if it already exists)
-        await supabase.storage.createBucket('digital-assets', {
-          public: false,
-        });
-        return true;
-      } catch (error) {
-        console.error('Error creating bucket:', error);
-        return false;
-      }
-    },
-    refetchOnWindowFocus: false,
-    retry: false,
-  });
+  // Create a time capsule mutation
+  const createMutation = useMutation({
+    mutationFn: async (values: z.infer<typeof createTimeCapsuleSchema>) => {
+      if (!user) throw new Error('Not authenticated');
 
-  // Handle asset upload completion
-  const handleUploadComplete = async (
-    filePath: string,
-    fileName: string,
-    fileSize: number,
-    visibility?: FileVisibility,
-    scheduledDate?: Date | null,
-    tags?: string[],
-    folder?: string,
-    watermark?: boolean,
-    restrictDownload?: boolean
-  ) => {
-    if (!user) return;
-
-    try {
-      const fileType = fileName.split('.').pop()?.toLowerCase() || '';
-      let category = 'document';
-      
-      // Determine file category based on extension
-      if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'].includes(fileType)) {
-        category = 'image';
-      } else if (['mp4', 'mov', 'avi', 'webm'].includes(fileType)) {
-        category = 'video';
-      } else if (['mp3', 'wav', 'ogg', 'flac'].includes(fileType)) {
-        category = 'audio';
-      } else if (['pdf', 'doc', 'docx', 'txt', 'rtf'].includes(fileType)) {
-        category = 'document';
-      } else if (['xls', 'xlsx', 'csv'].includes(fileType)) {
-        category = 'spreadsheet';
-      }
-
-      // Format file size
-      const formattedSize = formatFileSize(fileSize);
-
-      // Save asset metadata to database
-      const { error } = await supabase.from('digital_assets').insert({
+      const { error } = await supabase.from('time_capsules').insert({
         user_id: user.id,
-        name: fileName,
-        type: fileType,
-        category,
-        size: formattedSize,
-        storage_path: filePath,
-        tags: tags || [],
-        description: '',
-        is_encrypted: false,
+        title: values.title,
+        description: values.description,
+        type: values.type,
+        content: values.type === 'message' ? values.content : null,
+        storage_path: values.type === 'file' ? '/' : null, // This will be updated when the file is uploaded
+        lock_until: values.lockUntil.toISOString(),
+        is_locked: true,
       });
 
       if (error) throw error;
-
-      // Refresh the assets list
-      queryClient.invalidateQueries({ queryKey: ['digital-assets'] });
-      setShowUploadDialog(false);
-
-    } catch (error) {
-      toast({
-        title: 'Error saving asset',
-        description: error instanceof Error ? error.message : 'Failed to save asset metadata',
-        variant: 'destructive',
-      });
-    }
-  };
-
-  // Delete an asset
-  const deleteAssetMutation = useMutation({
-    mutationFn: async (asset: DigitalAsset) => {
-      if (!user) throw new Error('Not authenticated');
-
-      // First delete the file from storage
-      const { error: storageError } = await supabase.storage
-        .from('digital-assets')
-        .remove([asset.storage_path]);
-
-      if (storageError) throw storageError;
-
-      // Then delete the metadata from the database
-      const { error: dbError } = await supabase
-        .from('digital_assets')
-        .delete()
-        .eq('id', asset.id);
-
-      if (dbError) throw dbError;
-
-      return asset.id;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['digital-assets'] });
+      queryClient.invalidateQueries({ queryKey: ['time-capsules'] });
       toast({
-        title: 'Asset deleted',
-        description: 'The digital asset has been successfully deleted.',
+        title: 'Time Capsule Created',
+        description: 'Your time capsule has been created successfully',
+      });
+      setIsCreateDialogOpen(false);
+      form.reset();
+    },
+    onError: (error) => {
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to create time capsule',
+        variant: 'destructive',
+      });
+    },
+  });
+
+  // Delete time capsule mutation
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from('time_capsules').delete().eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['time-capsules'] });
+      toast({
+        title: 'Time Capsule Deleted',
+        description: 'Your time capsule has been deleted successfully',
       });
     },
     onError: (error) => {
       toast({
-        title: 'Error deleting asset',
-        description: error instanceof Error ? error.message : 'Failed to delete asset',
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to delete time capsule',
         variant: 'destructive',
       });
     },
   });
 
-  // Download an asset
-  const downloadAsset = async (asset: DigitalAsset) => {
+  // Handle form submission
+  const onSubmit = (values: z.infer<typeof createTimeCapsuleSchema>) => {
+    createMutation.mutate(values);
+  };
+
+  // Handle file upload completion
+  const handleFileUploadComplete = (filePath: string, fileName: string) => {
+    // Update the last created time capsule with the file path
+    if (!user) return;
+
+    // Get the most recently created time capsule
+    supabase
+      .from('time_capsules')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single()
+      .then(({ data, error }) => {
+        if (error || !data) {
+          console.error('Error fetching time capsule:', error);
+          return;
+        }
+
+        // Update the storage_path for this time capsule
+        supabase
+          .from('time_capsules')
+          .update({ storage_path: filePath })
+          .eq('id', data.id)
+          .then(({ error }) => {
+            if (error) {
+              console.error('Error updating time capsule:', error);
+            } else {
+              queryClient.invalidateQueries({ queryKey: ['time-capsules'] });
+              toast({
+                title: 'File Uploaded',
+                description: `${fileName} has been added to your time capsule`,
+              });
+            }
+          });
+      });
+  };
+
+  // Handle unlock time capsule
+  const handleUnlockCapsule = async () => {
+    if (!selectedCapsule) return;
+
     try {
-      const { data, error } = await supabase.storage
-        .from('digital-assets')
-        .download(asset.storage_path);
+      const { error } = await supabase
+        .from('time_capsules')
+        .update({ is_locked: false })
+        .eq('id', selectedCapsule.id);
 
       if (error) throw error;
 
-      // Create a download link
-      const url = URL.createObjectURL(data);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = asset.name;
-      document.body.appendChild(a);
-      a.click();
-      
-      // Clean up
-      URL.revokeObjectURL(url);
-      document.body.removeChild(a);
-
-      // Update last accessed timestamp
-      await supabase
-        .from('digital_assets')
-        .update({ last_accessed: new Date().toISOString() })
-        .eq('id', asset.id);
-
+      queryClient.invalidateQueries({ queryKey: ['time-capsules'] });
       toast({
-        title: 'Download started',
-        description: `Downloading ${asset.name}`,
+        title: 'Time Capsule Unlocked',
+        description: 'Your time capsule has been unlocked',
       });
+      setUnlockDialogOpen(false);
+      setSelectedCapsule(null);
     } catch (error) {
       toast({
-        title: 'Download failed',
-        description: error instanceof Error ? error.message : 'Failed to download file',
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to unlock time capsule',
         variant: 'destructive',
       });
     }
   };
 
-  // Filter assets based on search and folder
-  const filteredAssets = assets?.filter((asset) => {
-    const matchesSearch = 
-      searchQuery === '' || 
-      asset.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (asset.description && asset.description.toLowerCase().includes(searchQuery.toLowerCase())) ||
-      (asset.tags && asset.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase())));
-    
-    const matchesFolder = 
-      selectedFolder === 'all' || 
-      (selectedFolder === 'documents' && ['document', 'pdf', 'doc', 'docx', 'txt'].includes(asset.category || '')) ||
-      (selectedFolder === 'images' && asset.category === 'image') ||
-      (selectedFolder === 'videos' && asset.category === 'video') ||
-      (selectedFolder === 'audio' && asset.category === 'audio') ||
-      (selectedFolder === 'spreadsheets' && asset.category === 'spreadsheet');
-    
-    return matchesSearch && matchesFolder;
-  });
-
-  // Helper function to format file size
-  const formatFileSize = (bytes: number): string => {
-    if (bytes === 0) return '0 Bytes';
-    
-    const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-  };
-
-  // Get appropriate icon for file type
-  const getFileIcon = (asset: DigitalAsset) => {
-    const category = asset.category || '';
-    const type = asset.type || '';
-    
-    switch (category) {
-      case 'image':
-        return <Image className="h-4 w-4" />;
-      case 'video':
-        return <FileVideo className="h-4 w-4" />;
-      case 'audio':
-        return <FileAudio className="h-4 w-4" />;
-      case 'spreadsheet':
-        return <FileSpreadsheet className="h-4 w-4" />;
-      case 'document':
-        return type === 'pdf' ? <FileText className="h-4 w-4" /> : <File className="h-4 w-4" />;
-      default:
-        return <FileIcon className="h-4 w-4" />;
-    }
-  };
-
-  if (isLoading || isCreatingBucket) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="animate-pulse">Loading Digital Asset Vault...</div>
-      </div>
-    );
-  }
-
   return (
     <div className="container mx-auto py-8 px-4">
-      <motion.div 
+      <motion.div
         className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4"
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3 }}
       >
         <div>
-          <h1 className="text-3xl font-bold">Digital Asset Vault</h1>
+          <h1 className="text-3xl font-bold">Time Capsules</h1>
           <p className="text-muted-foreground">
-            Securely store and manage your important digital files
+            Create digital time capsules to preserve messages and files for future access
           </p>
         </div>
-        <Dialog open={showUploadDialog} onOpenChange={setShowUploadDialog}>
+        <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
           <DialogTrigger asChild>
-            <Button className="flex items-center gap-2">
-              <Plus className="h-4 w-4" />
-              Upload New Asset
+            <Button>
+              <PlusCircle className="mr-2 h-4 w-4" />
+              Create Time Capsule
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-[525px]">
+          <DialogContent className="sm:max-w-[600px]">
             <DialogHeader>
-              <DialogTitle>Upload Digital Asset</DialogTitle>
+              <DialogTitle>Create a New Time Capsule</DialogTitle>
               <DialogDescription>
-                Upload files to your secure digital vault
+                Lock away a message or file until a future date of your choosing.
               </DialogDescription>
             </DialogHeader>
-            <div className="py-4">
-              <FileUpload
-                bucketName="digital-assets"
-                path={user?.id}
-                onUploadComplete={handleUploadComplete}
-                maxSizeMB={50}
-                showAdvancedOptions={true}
-              />
-            </div>
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                <Tabs value={activeTab} onValueChange={(value) => {
+                  setActiveTab(value as 'message' | 'file');
+                  form.setValue('type', value as 'message' | 'file');
+                }}>
+                  <TabsList className="grid w-full grid-cols-2">
+                    <TabsTrigger value="message">Message</TabsTrigger>
+                    <TabsTrigger value="file">File</TabsTrigger>
+                  </TabsList>
+                  <FormField
+                    control={form.control}
+                    name="type"
+                    render={({ field }) => (
+                      <FormItem className="hidden">
+                        <FormControl>
+                          <Input {...field} />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                  <div className="pt-4 space-y-4">
+                    <FormField
+                      control={form.control}
+                      name="title"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Title</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Enter a title for your time capsule" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="description"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Description (Optional)</FormLabel>
+                          <FormControl>
+                            <Input
+                              placeholder="Add a brief description"
+                              {...field}
+                              value={field.value || ''}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="lockUntil"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-col">
+                          <FormLabel>Unlock Date</FormLabel>
+                          <Popover open={showCalendar} onOpenChange={setShowCalendar}>
+                            <PopoverTrigger asChild>
+                              <FormControl>
+                                <Button
+                                  variant="outline"
+                                  className="w-full pl-3 text-left font-normal"
+                                >
+                                  <CalendarIcon className="mr-2 h-4 w-4" />
+                                  {field.value ? format(field.value, 'PPP') : <span>Pick a date</span>}
+                                  <ChevronDown className="ml-auto h-4 w-4 opacity-50" />
+                                </Button>
+                              </FormControl>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start">
+                              <CalendarComponent
+                                mode="single"
+                                selected={field.value}
+                                onSelect={(date) => {
+                                  if (date) {
+                                    field.onChange(date);
+                                    setShowCalendar(false);
+                                  }
+                                }}
+                                disabled={(date) => date < new Date()}
+                                initialFocus
+                              />
+                            </PopoverContent>
+                          </Popover>
+                          <FormDescription>
+                            The time capsule will be locked until this date.
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <TabsContent value="message">
+                      <FormField
+                        control={form.control}
+                        name="content"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Message</FormLabel>
+                            <FormControl>
+                              <Textarea
+                                placeholder="Write a message to your future self or loved ones..."
+                                className="min-h-[150px]"
+                                {...field}
+                                value={field.value || ''}
+                              />
+                            </FormControl>
+                            <FormDescription>
+                              This message will be locked until the unlock date.
+                            </FormDescription>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </TabsContent>
+                    <TabsContent value="file">
+                      <div className="space-y-4">
+                        <Label>Upload File</Label>
+                        <FileUpload
+                          bucketName="time-capsules"
+                          path={user?.id}
+                          onUploadComplete={handleFileUploadComplete}
+                          maxSizeMB={20}
+                        />
+                        <FormDescription>
+                          The file will be securely stored and locked until the unlock date.
+                        </FormDescription>
+                      </div>
+                    </TabsContent>
+                  </div>
+                </Tabs>
+                <DialogFooter>
+                  <Button type="submit" disabled={createMutation.isPending}>
+                    {createMutation.isPending ? 'Creating...' : 'Create Time Capsule'}
+                  </Button>
+                </DialogFooter>
+              </form>
+            </Form>
           </DialogContent>
         </Dialog>
       </motion.div>
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <motion.div 
-          className="md:col-span-1"
-          initial={{ opacity: 0, x: -20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.3, delay: 0.1 }}
-        >
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Folders</CardTitle>
-            </CardHeader>
-            <CardContent className="p-0">
-              <div className="space-y-1">
-                <Button
-                  variant={selectedFolder === 'all' ? 'secondary' : 'ghost'}
-                  className="w-full justify-start px-4"
-                  onClick={() => setSelectedFolder('all')}
-                >
-                  <Archive className="mr-2 h-4 w-4" />
-                  All Files
-                </Button>
-                <Button
-                  variant={selectedFolder === 'documents' ? 'secondary' : 'ghost'}
-                  className="w-full justify-start px-4"
-                  onClick={() => setSelectedFolder('documents')}
-                >
-                  <FileText className="mr-2 h-4 w-4" />
-                  Documents
-                </Button>
-                <Button
-                  variant={selectedFolder === 'images' ? 'secondary' : 'ghost'}
-                  className="w-full justify-start px-4"
-                  onClick={() => setSelectedFolder('images')}
-                >
-                  <Image className="mr-2 h-4 w-4" />
-                  Images
-                </Button>
-                <Button
-                  variant={selectedFolder === 'videos' ? 'secondary' : 'ghost'}
-                  className="w-full justify-start px-4"
-                  onClick={() => setSelectedFolder('videos')}
-                >
-                  <FileVideo className="mr-2 h-4 w-4" />
-                  Videos
-                </Button>
-                <Button
-                  variant={selectedFolder === 'audio' ? 'secondary' : 'ghost'}
-                  className="w-full justify-start px-4"
-                  onClick={() => setSelectedFolder('audio')}
-                >
-                  <FileAudio className="mr-2 h-4 w-4" />
-                  Audio
-                </Button>
-                <Button
-                  variant={selectedFolder === 'spreadsheets' ? 'secondary' : 'ghost'}
-                  className="w-full justify-start px-4"
-                  onClick={() => setSelectedFolder('spreadsheets')}
-                >
-                  <FileSpreadsheet className="mr-2 h-4 w-4" />
-                  Spreadsheets
-                </Button>
-              </div>
-            </CardContent>
-            <CardFooter className="p-4 pt-0">
-              <Button variant="outline" className="w-full" onClick={() => setShowUploadDialog(true)}>
-                <Plus className="mr-2 h-4 w-4" />
-                Upload File
-              </Button>
-            </CardFooter>
-          </Card>
-        </motion.div>
+      <div className="space-y-6">
+        <div className="flex items-center gap-2 mb-4">
+          <Input
+            placeholder="Search time capsules..."
+            className="max-w-xs"
+          />
+          <Select defaultValue="all">
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Filter by type" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Types</SelectItem>
+              <SelectItem value="message">Messages</SelectItem>
+              <SelectItem value="file">Files</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
 
-        <motion.div 
-          className="md:col-span-3"
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.3, delay: 0.2 }}
-        >
-          <Card>
-            <CardHeader className="pb-3">
-              <div className="flex justify-between items-center mb-2">
-                <CardTitle>Your Digital Assets</CardTitle>
-                <div className="flex items-center space-x-2">
-                  <Button variant="outline" size="icon">
-                    <Filter className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" />
-                <Input 
-                  placeholder="Search files and folders..." 
-                  className="pl-10"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
-              </div>
-            </CardHeader>
-            <CardContent>
-              {filteredAssets && filteredAssets.length > 0 ? (
-                <div className="rounded-md border">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Name</TableHead>
-                        <TableHead>Type</TableHead>
-                        <TableHead>Size</TableHead>
-                        <TableHead>Date Added</TableHead>
-                        <TableHead className="w-[80px]"></TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {filteredAssets.map((asset) => (
-                        <TableRow key={asset.id}>
-                          <TableCell className="font-medium flex items-center">
-                            <div className="mr-2">
-                              {getFileIcon(asset)}
-                            </div>
-                            <span className="truncate max-w-[200px]">{asset.name}</span>
-                          </TableCell>
-                          <TableCell>
-                            {asset.type.toUpperCase()}
-                          </TableCell>
-                          <TableCell>{asset.size}</TableCell>
-                          <TableCell>
-                            {format(new Date(asset.created_at), 'MMM d, yyyy')}
-                          </TableCell>
-                          <TableCell>
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon">
-                                  <MoreHorizontal className="h-4 w-4" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                                <DropdownMenuItem 
-                                  onClick={() => downloadAsset(asset)}
-                                  className="cursor-pointer"
-                                >
-                                  <Download className="mr-2 h-4 w-4" />
-                                  Download
-                                </DropdownMenuItem>
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem 
-                                  onClick={() => deleteAssetMutation.mutate(asset)}
-                                  className="text-destructive cursor-pointer"
-                                >
-                                  <Trash2 className="mr-2 h-4 w-4" />
-                                  Delete
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              ) : (
-                <div className="text-center py-10">
-                  <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-muted mb-4">
-                    <Folder className="h-8 w-8 text-muted-foreground" />
-                  </div>
-                  <h3 className="text-lg font-medium mb-2">No files found</h3>
-                  <p className="text-muted-foreground mb-4">
-                    {searchQuery 
-                      ? "No files match your search criteria" 
-                      : "Upload your first file to get started"}
-                  </p>
-                  <Button onClick={() => setShowUploadDialog(true)}>
-                    <Plus className="mr-2 h-4 w-4" />
-                    Upload File
-                  </Button>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </motion.div>
+        {isLoading ? (
+          <div className="text-center py-10">
+            <div className="animate-spin h-10 w-10 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
+            <p className="text-muted-foreground">Loading your time capsules...</p>
+          </div>
+        ) : timeCapsules && timeCapsules.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {timeCapsules.map((capsule) => (
+              <motion.div
+                key={capsule.id}
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.2 }}
+              >
+                <Card className={capsule.is_locked ? 'border-primary/30' : ''}>
+                  <CardHeader className="pb-3">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <CardTitle className="flex items-center">
+                          {capsule.type === 'message' ? (
+                            <MessageSquare className="h-4 w-4 mr-2 text-primary" />
+                          ) : (
+                            <FileIcon className="h-4 w-4 mr-2 text-primary" />
+                          )}
+                          {capsule.title}
+                        </CardTitle>
+                        <CardDescription>{capsule.description}</CardDescription>
+                      </div>
+                      <div className="flex">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="text-destructive hover:text-destructive/90 hover:bg-destructive/10"
+                          onClick={() => deleteMutation.mutate(capsule.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2">
+                      <div className="flex items-center text-sm">
+                        <Calendar className="h-4 w-4 mr-2 text-muted-foreground" />
+                        <span className="text-muted-foreground">
+                          Unlocks on {format(new Date(capsule.lock_until), 'MMMM d, yyyy')}
+                        </span>
+                      </div>
+                      <div className="flex items-center text-sm">
+                        <Clock className="h-4 w-4 mr-2 text-muted-foreground" />
+                        <span className="text-muted-foreground">
+                          Created on {format(new Date(capsule.created_at), 'MMMM d, yyyy')}
+                        </span>
+                      </div>
+                    </div>
+                  </CardContent>
+                  <CardFooter>
+                    {capsule.is_locked ? (
+                      <Button
+                        variant="outline"
+                        className="w-full"
+                        onClick={() => {
+                          setSelectedCapsule(capsule);
+                          setUnlockDialogOpen(true);
+                        }}
+                      >
+                        <Lock className="mr-2 h-4 w-4" />
+                        Unlock Early
+                      </Button>
+                    ) : capsule.type === 'message' ? (
+                      <div className="w-full p-4 bg-muted rounded-md">
+                        <p className="text-sm">{capsule.content}</p>
+                      </div>
+                    ) : (
+                      <Button className="w-full" variant="outline">
+                        <FileIcon className="mr-2 h-4 w-4" />
+                        Download File
+                      </Button>
+                    )}
+                  </CardFooter>
+                </Card>
+              </motion.div>
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-16 bg-muted/20 rounded-lg border">
+            <Lock className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+            <h2 className="text-xl font-medium mb-2">No Time Capsules Yet</h2>
+            <p className="text-muted-foreground max-w-md mx-auto mb-6">
+              Create your first time capsule to preserve messages or files for your future self or
+              loved ones.
+            </p>
+            <Button onClick={() => setIsCreateDialogOpen(true)}>
+              <PlusCircle className="mr-2 h-4 w-4" />
+              Create Your First Time Capsule
+            </Button>
+          </div>
+        )}
       </div>
 
-      <motion.div 
-        className="mt-8"
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3, delay: 0.3 }}
-      >
-        <Card>
-          <CardHeader>
-            <CardTitle>Storage Security</CardTitle>
-            <CardDescription>
-              Information about how your digital assets are protected
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="flex flex-col items-center text-center p-4">
-                <div className="bg-primary/10 p-4 rounded-full mb-4">
-                  <Lock className="h-8 w-8 text-primary" />
-                </div>
-                <h3 className="font-medium mb-2">End-to-End Encryption</h3>
-                <p className="text-sm text-muted-foreground">
-                  Your files are encrypted during transit and at rest, ensuring 
-                  maximum protection of your sensitive information.
-                </p>
-              </div>
-              
-              <div className="flex flex-col items-center text-center p-4">
-                <div className="bg-primary/10 p-4 rounded-full mb-4">
-                  <FileLock2 className="h-8 w-8 text-primary" />
-                </div>
-                <h3 className="font-medium mb-2">Access Control</h3>
-                <p className="text-sm text-muted-foreground">
-                  Define who can access your digital assets and under what conditions
-                  with our comprehensive permission system.
-                </p>
-              </div>
-              
-              <div className="flex flex-col items-center text-center p-4">
-                <div className="bg-primary/10 p-4 rounded-full mb-4">
-                  <FileUp className="h-8 w-8 text-primary" />
-                </div>
-                <h3 className="font-medium mb-2">Secure Storage</h3>
-                <p className="text-sm text-muted-foreground">
-                  All files are stored in our secure vault with regular backups
-                  and protection against unauthorized access.
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </motion.div>
+      <Dialog open={unlockDialogOpen} onOpenChange={setUnlockDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Unlock Time Capsule Early</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to unlock this time capsule before its scheduled date? This
+              action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setUnlockDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button variant="default" onClick={handleUnlockCapsule}>
+              Unlock Now
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
 
-export default DigitalAssetVaultPage;
+export default TimeCapsulePage;

@@ -5,10 +5,10 @@ import Footer from './Footer';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 
-const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+const Layout = ({ children }) => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
-  
+
   // Create a formatted user object with required fields
   const formattedUser = user ? {
     name: user.user_metadata?.name || user.email?.split('@')[0] || 'User',
