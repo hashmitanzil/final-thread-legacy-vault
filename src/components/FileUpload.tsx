@@ -99,24 +99,27 @@ const FileUpload: React.FC<FileUploadProps> = ({
   };
   
   const handleUpload = async () => {
-    if (!file || !user) return;
+    if (!file || !user) {
+      toast({
+        title: 'Upload failed',
+        description: !file ? 'Please select a file to upload' : 'You must be logged in to upload files',
+        variant: 'destructive'
+      });
+      return;
+    }
     
     setUploading(true);
     setProgress(0);
     
-    const fileExt = file.name.split('.').pop();
-    const fileName = `${Math.random().toString(36).substring(2)}.${fileExt}`;
-    const filePath = `${path ? path + '/' : ''}${fileName}`;
-    
     try {
-      // Track upload progress with an event listener
-      const uploadTask = supabase.storage
-        .from(bucketName)
-        .upload(filePath, file, {
-          upsert: true
-        });
+      // Create a bucket if it doesn't exist yet
+      await ensureBucketExists(bucketName);
       
-      // Set up a manual progress tracker (since onUploadProgress is not available)
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Math.random().toString(36).substring(2)}.${fileExt}`;
+      const filePath = `${path ? path + '/' : ''}${fileName}`;
+      
+      // Set up a manual progress tracker
       const progressInterval = setInterval(() => {
         setProgress(prev => {
           // Simulate progress until we get the actual result
@@ -125,7 +128,11 @@ const FileUpload: React.FC<FileUploadProps> = ({
         });
       }, 300);
       
-      const { error } = await uploadTask;
+      const { error } = await supabase.storage
+        .from(bucketName)
+        .upload(filePath, file, {
+          upsert: true
+        });
       
       // Clear the progress interval
       clearInterval(progressInterval);
@@ -171,6 +178,27 @@ const FileUpload: React.FC<FileUploadProps> = ({
       });
     } finally {
       setUploading(false);
+    }
+  };
+  
+  const ensureBucketExists = async (bucketName: string) => {
+    try {
+      // Check if the bucket exists
+      const { data: buckets } = await supabase.storage.listBuckets();
+      const bucketExists = buckets?.some(bucket => bucket.name === bucketName);
+      
+      if (!bucketExists) {
+        // Create the bucket if it doesn't exist
+        const { error } = await supabase.storage.createBucket(bucketName, {
+          public: false
+        });
+        
+        if (error) throw error;
+        console.log(`Bucket "${bucketName}" created successfully`);
+      }
+    } catch (error) {
+      console.error('Error ensuring bucket exists:', error);
+      // Continue anyway, as the bucket might already exist despite the error
     }
   };
   
@@ -286,6 +314,9 @@ const FileUpload: React.FC<FileUploadProps> = ({
                       <Button
                         variant="outline"
                         className="w-full justify-start text-left font-normal"
+                        onClick={(e) => {
+                          e.preventDefault();
+                        }}
                       >
                         <Calendar className="mr-2 h-4 w-4" />
                         {scheduledDate ? format(scheduledDate, 'PPP') : <span>Pick a date</span>}

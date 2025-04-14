@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -240,10 +241,10 @@ const TimeCapsulePage: React.FC = () => {
                           type="button"
                           variant={field.value === 'file' ? 'default' : 'outline'}
                           className="flex flex-col items-center justify-center h-20 w-full"
-                          disabled
+                          onClick={() => form.setValue('type', 'file')}
                         >
                           <FileText className="h-5 w-5 mb-1" />
-                          <span>File (Coming Soon)</span>
+                          <span>File</span>
                         </Button>
                       </div>
                       <FormMessage />
@@ -308,17 +309,23 @@ const TimeCapsulePage: React.FC = () => {
                         <PopoverTrigger asChild>
                           <FormControl>
                             <Button
-                              variant={"outline"}
-                              className={`w-full pl-3 text-left font-normal ${
-                                !field.value && "text-muted-foreground"
-                              }`}
+                              variant="outline"
+                              className="w-full pl-3 text-left font-normal"
+                              onClick={(e) => {
+                                // Prevent the form from submitting when opening the date picker
+                                e.preventDefault();
+                                if (selectedPreset === 'custom') {
+                                  // Set focus to calendar when custom is selected
+                                  setTimeout(() => {
+                                    document.querySelector('.rdp-button')?.focus();
+                                  }, 100);
+                                }
+                              }}
                             >
-                              {field.value ? (
-                                format(field.value, "PPP")
-                              ) : (
-                                <span>Pick a date</span>
-                              )}
-                              <CalendarIcon className="ml-auto h-4 w-4" />
+                              <span className={!field.value ? "text-muted-foreground" : ""}>
+                                {field.value ? format(field.value, "PPP") : "Pick a date"}
+                              </span>
+                              <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                             </Button>
                           </FormControl>
                         </PopoverTrigger>
@@ -326,8 +333,16 @@ const TimeCapsulePage: React.FC = () => {
                           <Calendar
                             mode="single"
                             selected={field.value}
-                            onSelect={field.onChange}
-                            disabled={(date) => date < new Date()}
+                            onSelect={(date) => {
+                              if (date) {
+                                field.onChange(date);
+                                // Set preset to custom when a date is manually selected
+                                setSelectedPreset('custom');
+                              }
+                            }}
+                            disabled={(date) => 
+                              date < new Date() || date.getTime() === new Date().setHours(0, 0, 0, 0)
+                            }
                             initialFocus
                           />
                         </PopoverContent>

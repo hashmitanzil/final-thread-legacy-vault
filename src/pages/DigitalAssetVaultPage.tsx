@@ -2,18 +2,19 @@
 import React, { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from '@/components/ui/use-toast';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { format } from 'date-fns';
-import { PostgrestError } from '@supabase/supabase-js';
-import { DigitalAsset } from '@/types/supabase-extensions';
+import { FileUpload, FileVisibility } from '@/components/FileUpload';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Card,
   CardContent,
   CardDescription,
+  CardFooter,
   CardHeader,
   CardTitle,
-  CardFooter,
 } from '@/components/ui/card';
 import {
   Dialog,
@@ -25,22 +26,11 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import {
-  Form,
-  FormControl,
-  FormDescription,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from '@/components/ui/form';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
-import { Separator } from '@/components/ui/separator';
-import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
@@ -52,723 +42,564 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import {
-  File,
-  FilePlus,
-  FileEdit,
-  FileX,
-  MoreVertical,
-  Download,
-  Eye,
-  AlertTriangle,
-  Info,
-  Lock,
-  Unlock,
+  Archive,
+  FileSpreadsheet,
+  FileText,
+  Filter,
   Folder,
+  Image,
+  Lock,
+  MoreHorizontal,
   Plus,
   Search,
+  Download,
+  FileLock2,
+  FileUp,
+  Trash2,
+  FileVideo,
+  FileAudio,
+  File,
+  Tag,
+  FileIcon
 } from 'lucide-react';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Textarea } from '@/components/ui/textarea';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import * as z from 'zod';
+import { format } from 'date-fns';
+import { motion } from 'framer-motion';
 
-// Generic approach for database operations
-type GenericRecord = Record<string, any>;
+// Define types for digital assets
+interface DigitalAsset {
+  id: string;
+  name: string;
+  type: string;
+  size: string;
+  storage_path: string;
+  tags?: string[];
+  category?: string;
+  description?: string;
+  user_id: string;
+  created_at: string;
+  updated_at: string;
+  is_encrypted?: boolean;
+  last_accessed?: string;
+}
 
-// Form schema for creating and editing assets
-const assetFormSchema = z.object({
-  name: z.string().min(1, "Name is required"),
-  description: z.string().optional(),
-  type: z.string().min(1, "Type is required"),
-  size: z.string().min(1, "Size is required"),
-  category: z.string().min(1, "Category is required"),
-  is_encrypted: z.boolean().default(false),
-});
-
-type AssetFormValues = z.infer<typeof assetFormSchema>;
-
-export default function DigitalAssetVaultPage() {
+const DigitalAssetVaultPage: React.FC = () => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedFolder, setSelectedFolder] = useState('all');
+  const [showUploadDialog, setShowUploadDialog] = useState(false);
 
-  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [selectedAsset, setSelectedAsset] = useState<DigitalAsset | null>(null);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [activeCategory, setActiveCategory] = useState<string>('all');
-
-  // Create form
-  const createForm = useForm<AssetFormValues>({
-    resolver: zodResolver(assetFormSchema),
-    defaultValues: {
-      name: '',
-      description: '',
-      type: '',
-      size: '',
-      category: 'documents',
-      is_encrypted: false,
-    },
-  });
-
-  // Edit form
-  const editForm = useForm<AssetFormValues>({
-    resolver: zodResolver(assetFormSchema),
-    defaultValues: {
-      name: '',
-      description: '',
-      type: '',
-      size: '',
-      category: 'documents',
-      is_encrypted: false,
-    },
-  });
-
-  // Fetch digital assets with a simpler approach to avoid deep type instantiation
-  const { data: assets = [], isLoading } = useQuery({
-    queryKey: ['digitalAssets', user?.id, searchTerm, activeCategory],
+  // Fetch user's digital assets
+  const { data: assets, isLoading } = useQuery({
+    queryKey: ['digital-assets', user?.id],
     queryFn: async () => {
-      if (!user) return [] as DigitalAsset[];
-      
-      // First step: Create a basic query - no chaining yet to avoid deep typing issues
-      let { data, error } = await supabase
+      if (!user) return [];
+
+      const { data, error } = await supabase
         .from('digital_assets')
         .select('*')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
-      
-      // Handle initial query error
+
       if (error) throw error;
-      
-      // Filter the data in memory instead of chaining query methods
-      // This avoids the TypeScript deep instantiation problem
-      let filteredData = data || [];
-      
-      // Apply category filter if needed - checking if the property exists
-      if (activeCategory && activeCategory !== 'all') {
-        filteredData = filteredData.filter(asset => 
-          // Check if 'category' exists as a key and matches activeCategory
-          'category' in asset && asset.category === activeCategory
-        );
-      }
-      
-      // Apply search filter if needed
-      if (searchTerm) {
-        filteredData = filteredData.filter(asset => 
-          asset.name.toLowerCase().includes(searchTerm.toLowerCase())
-        );
-      }
-      
-      // Cast the result to the expected type
-      return filteredData as DigitalAsset[];
+      return data as DigitalAsset[];
     },
     enabled: !!user,
   });
 
-  // Create asset mutation
-  const createAssetMutation = useMutation({
-    mutationFn: async (data: AssetFormValues) => {
-      if (!user) throw new Error("Not authenticated");
+  // Create a storage bucket if it doesn't exist
+  const { isLoading: isCreatingBucket } = useQuery({
+    queryKey: ['create-bucket'],
+    queryFn: async () => {
+      try {
+        // Try to create the bucket (this will fail silently if it already exists)
+        await supabase.storage.createBucket('digital-assets', {
+          public: false,
+        });
+        return true;
+      } catch (error) {
+        console.error('Error creating bucket:', error);
+        return false;
+      }
+    },
+    refetchOnWindowFocus: false,
+    retry: false,
+  });
+
+  // Handle asset upload completion
+  const handleUploadComplete = async (
+    filePath: string,
+    fileName: string,
+    fileSize: number,
+    visibility?: FileVisibility,
+    scheduledDate?: Date | null,
+    tags?: string[],
+    folder?: string,
+    watermark?: boolean,
+    restrictDownload?: boolean
+  ) => {
+    if (!user) return;
+
+    try {
+      const fileType = fileName.split('.').pop()?.toLowerCase() || '';
+      let category = 'document';
       
-      const newAsset = {
+      // Determine file category based on extension
+      if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'].includes(fileType)) {
+        category = 'image';
+      } else if (['mp4', 'mov', 'avi', 'webm'].includes(fileType)) {
+        category = 'video';
+      } else if (['mp3', 'wav', 'ogg', 'flac'].includes(fileType)) {
+        category = 'audio';
+      } else if (['pdf', 'doc', 'docx', 'txt', 'rtf'].includes(fileType)) {
+        category = 'document';
+      } else if (['xls', 'xlsx', 'csv'].includes(fileType)) {
+        category = 'spreadsheet';
+      }
+
+      // Format file size
+      const formattedSize = formatFileSize(fileSize);
+
+      // Save asset metadata to database
+      const { error } = await supabase.from('digital_assets').insert({
         user_id: user.id,
-        name: data.name,
-        description: data.description || null,
-        type: data.type,
-        size: data.size,
-        category: data.category,
-        is_encrypted: data.is_encrypted,
-        storage_path: `assets/${user.id}/${Date.now()}_${data.name}`,
-        last_accessed: new Date().toISOString(),
-      };
-      
-      const { error } = await supabase
-        .from('digital_assets')
-        .insert(newAsset);
-        
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['digitalAssets'] });
-      toast({
-        title: "Asset created",
-        description: "Digital asset has been created successfully.",
+        name: fileName,
+        type: fileType,
+        category,
+        size: formattedSize,
+        storage_path: filePath,
+        tags: tags || [],
+        description: '',
+        is_encrypted: false,
       });
-      setIsCreateDialogOpen(false);
-      createForm.reset();
-    },
-    onError: (error) => {
-      console.error("Error creating asset:", error);
-      toast({
-        title: "Error",
-        description: "Failed to create digital asset.",
-        variant: "destructive",
-      });
-    },
-  });
 
-  // Update asset mutation
-  const updateAssetMutation = useMutation({
-    mutationFn: async (data: AssetFormValues) => {
-      if (!selectedAsset) throw new Error("No asset selected");
-      
-      const updatedAsset = {
-        name: data.name,
-        description: data.description || null,
-        type: data.type,
-        size: data.size,
-        category: data.category,
-        is_encrypted: data.is_encrypted,
-        updated_at: new Date().toISOString(),
-      };
-      
-      const { error } = await supabase
-        .from('digital_assets')
-        .update(updatedAsset)
-        .eq('id', selectedAsset.id);
-        
       if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['digitalAssets'] });
-      toast({
-        title: "Asset updated",
-        description: "Digital asset has been updated successfully.",
-      });
-      setIsEditDialogOpen(false);
-      setSelectedAsset(null);
-      editForm.reset();
-    },
-    onError: (error) => {
-      console.error("Error updating asset:", error);
-      toast({
-        title: "Error",
-        description: "Failed to update digital asset.",
-        variant: "destructive",
-      });
-    },
-  });
 
-  // Delete asset mutation
+      // Refresh the assets list
+      queryClient.invalidateQueries({ queryKey: ['digital-assets'] });
+      setShowUploadDialog(false);
+
+    } catch (error) {
+      toast({
+        title: 'Error saving asset',
+        description: error instanceof Error ? error.message : 'Failed to save asset metadata',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  // Delete an asset
   const deleteAssetMutation = useMutation({
-    mutationFn: async () => {
-      if (!selectedAsset) throw new Error("No asset selected");
-      
-      const { error } = await supabase
+    mutationFn: async (asset: DigitalAsset) => {
+      if (!user) throw new Error('Not authenticated');
+
+      // First delete the file from storage
+      const { error: storageError } = await supabase.storage
+        .from('digital-assets')
+        .remove([asset.storage_path]);
+
+      if (storageError) throw storageError;
+
+      // Then delete the metadata from the database
+      const { error: dbError } = await supabase
         .from('digital_assets')
         .delete()
-        .eq('id', selectedAsset.id);
-        
-      if (error) throw error;
+        .eq('id', asset.id);
+
+      if (dbError) throw dbError;
+
+      return asset.id;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['digitalAssets'] });
+      queryClient.invalidateQueries({ queryKey: ['digital-assets'] });
       toast({
-        title: "Asset deleted",
-        description: "Digital asset has been deleted successfully.",
+        title: 'Asset deleted',
+        description: 'The digital asset has been successfully deleted.',
       });
-      setIsDeleteDialogOpen(false);
-      setSelectedAsset(null);
     },
     onError: (error) => {
-      console.error("Error deleting asset:", error);
       toast({
-        title: "Error",
-        description: "Failed to delete digital asset.",
-        variant: "destructive",
+        title: 'Error deleting asset',
+        description: error instanceof Error ? error.message : 'Failed to delete asset',
+        variant: 'destructive',
       });
     },
   });
 
-  const handleCreateDialogOpen = () => {
-    createForm.reset();
-    setIsCreateDialogOpen(true);
+  // Download an asset
+  const downloadAsset = async (asset: DigitalAsset) => {
+    try {
+      const { data, error } = await supabase.storage
+        .from('digital-assets')
+        .download(asset.storage_path);
+
+      if (error) throw error;
+
+      // Create a download link
+      const url = URL.createObjectURL(data);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = asset.name;
+      document.body.appendChild(a);
+      a.click();
+      
+      // Clean up
+      URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+
+      // Update last accessed timestamp
+      await supabase
+        .from('digital_assets')
+        .update({ last_accessed: new Date().toISOString() })
+        .eq('id', asset.id);
+
+      toast({
+        title: 'Download started',
+        description: `Downloading ${asset.name}`,
+      });
+    } catch (error) {
+      toast({
+        title: 'Download failed',
+        description: error instanceof Error ? error.message : 'Failed to download file',
+        variant: 'destructive',
+      });
+    }
   };
 
-  const handleCreateDialogClose = () => {
-    setIsCreateDialogOpen(false);
-    createForm.reset();
+  // Filter assets based on search and folder
+  const filteredAssets = assets?.filter((asset) => {
+    const matchesSearch = 
+      searchQuery === '' || 
+      asset.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (asset.description && asset.description.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (asset.tags && asset.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase())));
+    
+    const matchesFolder = 
+      selectedFolder === 'all' || 
+      (selectedFolder === 'documents' && ['document', 'pdf', 'doc', 'docx', 'txt'].includes(asset.category || '')) ||
+      (selectedFolder === 'images' && asset.category === 'image') ||
+      (selectedFolder === 'videos' && asset.category === 'video') ||
+      (selectedFolder === 'audio' && asset.category === 'audio') ||
+      (selectedFolder === 'spreadsheets' && asset.category === 'spreadsheet');
+    
+    return matchesSearch && matchesFolder;
+  });
+
+  // Helper function to format file size
+  const formatFileSize = (bytes: number): string => {
+    if (bytes === 0) return '0 Bytes';
+    
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
-  const handleEditDialogOpen = (asset: DigitalAsset) => {
-    setSelectedAsset(asset);
-    editForm.reset({
-      name: asset.name,
-      description: asset.description || '',
-      type: asset.type,
-      size: asset.size,
-      category: asset.category || 'documents',
-      is_encrypted: asset.is_encrypted || false,
-    });
-    setIsEditDialogOpen(true);
+  // Get appropriate icon for file type
+  const getFileIcon = (asset: DigitalAsset) => {
+    const category = asset.category || '';
+    const type = asset.type || '';
+    
+    switch (category) {
+      case 'image':
+        return <Image className="h-4 w-4" />;
+      case 'video':
+        return <FileVideo className="h-4 w-4" />;
+      case 'audio':
+        return <FileAudio className="h-4 w-4" />;
+      case 'spreadsheet':
+        return <FileSpreadsheet className="h-4 w-4" />;
+      case 'document':
+        return type === 'pdf' ? <FileText className="h-4 w-4" /> : <File className="h-4 w-4" />;
+      default:
+        return <FileIcon className="h-4 w-4" />;
+    }
   };
 
-  const handleEditDialogClose = () => {
-    setIsEditDialogOpen(false);
-    setSelectedAsset(null);
-    editForm.reset();
-  };
-
-  const handleDeleteDialogOpen = (asset: DigitalAsset) => {
-    setSelectedAsset(asset);
-    setIsDeleteDialogOpen(true);
-  };
-
-  const handleDeleteDialogClose = () => {
-    setIsDeleteDialogOpen(false);
-    setSelectedAsset(null);
-  };
-
-  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchTerm(e.target.value);
-  };
-
-  const handleCategoryChange = (category: string) => {
-    setActiveCategory(category);
-  };
-
-  const onCreateSubmit = (data: AssetFormValues) => {
-    createAssetMutation.mutate(data);
-  };
-
-  const onEditSubmit = (data: AssetFormValues) => {
-    updateAssetMutation.mutate(data);
-  };
+  if (isLoading || isCreatingBucket) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="animate-pulse">Loading Digital Asset Vault...</div>
+      </div>
+    );
+  }
 
   return (
-    <div>
-      <div className="container mx-auto py-8 px-4">
-        <div className="flex items-center justify-between mb-4">
-          <h1 className="text-2xl font-bold">Digital Asset Vault</h1>
-          <div className="flex items-center space-x-4">
-            <Input
-              type="search"
-              placeholder="Search assets..."
-              value={searchTerm}
-              onChange={handleSearchChange}
-              className="max-w-md"
-            />
-            <Button onClick={handleCreateDialogOpen}>
-              <Plus className="mr-2 h-4 w-4" />
-              Add Asset
-            </Button>
-          </div>
+    <div className="container mx-auto py-8 px-4">
+      <motion.div 
+        className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4"
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3 }}
+      >
+        <div>
+          <h1 className="text-3xl font-bold">Digital Asset Vault</h1>
+          <p className="text-muted-foreground">
+            Securely store and manage your important digital files
+          </p>
         </div>
+        <Dialog open={showUploadDialog} onOpenChange={setShowUploadDialog}>
+          <DialogTrigger asChild>
+            <Button className="flex items-center gap-2">
+              <Plus className="h-4 w-4" />
+              Upload New Asset
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-[525px]">
+            <DialogHeader>
+              <DialogTitle>Upload Digital Asset</DialogTitle>
+              <DialogDescription>
+                Upload files to your secure digital vault
+              </DialogDescription>
+            </DialogHeader>
+            <div className="py-4">
+              <FileUpload
+                bucketName="digital-assets"
+                path={user?.id}
+                onUploadComplete={handleUploadComplete}
+                maxSizeMB={50}
+                showAdvancedOptions={true}
+              />
+            </div>
+          </DialogContent>
+        </Dialog>
+      </motion.div>
 
-        <div className="mb-4">
-          <Label>Category:</Label>
-          <div className="flex space-x-2 mt-1">
-            <Button
-              variant={activeCategory === 'all' ? 'default' : 'outline'}
-              onClick={() => handleCategoryChange('all')}
-            >
-              All
-            </Button>
-            <Button
-              variant={activeCategory === 'documents' ? 'default' : 'outline'}
-              onClick={() => handleCategoryChange('documents')}
-            >
-              Documents
-            </Button>
-            <Button
-              variant={activeCategory === 'images' ? 'default' : 'outline'}
-              onClick={() => handleCategoryChange('images')}
-            >
-              Images
-            </Button>
-            <Button
-              variant={activeCategory === 'videos' ? 'default' : 'outline'}
-              onClick={() => handleCategoryChange('videos')}
-            >
-              Videos
-            </Button>
-            <Button
-              variant={activeCategory === 'other' ? 'default' : 'outline'}
-              onClick={() => handleCategoryChange('other')}
-            >
-              Other
-            </Button>
-          </div>
-        </div>
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <motion.div 
+          className="md:col-span-1"
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.3, delay: 0.1 }}
+        >
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Folders</CardTitle>
+            </CardHeader>
+            <CardContent className="p-0">
+              <div className="space-y-1">
+                <Button
+                  variant={selectedFolder === 'all' ? 'secondary' : 'ghost'}
+                  className="w-full justify-start px-4"
+                  onClick={() => setSelectedFolder('all')}
+                >
+                  <Archive className="mr-2 h-4 w-4" />
+                  All Files
+                </Button>
+                <Button
+                  variant={selectedFolder === 'documents' ? 'secondary' : 'ghost'}
+                  className="w-full justify-start px-4"
+                  onClick={() => setSelectedFolder('documents')}
+                >
+                  <FileText className="mr-2 h-4 w-4" />
+                  Documents
+                </Button>
+                <Button
+                  variant={selectedFolder === 'images' ? 'secondary' : 'ghost'}
+                  className="w-full justify-start px-4"
+                  onClick={() => setSelectedFolder('images')}
+                >
+                  <Image className="mr-2 h-4 w-4" />
+                  Images
+                </Button>
+                <Button
+                  variant={selectedFolder === 'videos' ? 'secondary' : 'ghost'}
+                  className="w-full justify-start px-4"
+                  onClick={() => setSelectedFolder('videos')}
+                >
+                  <FileVideo className="mr-2 h-4 w-4" />
+                  Videos
+                </Button>
+                <Button
+                  variant={selectedFolder === 'audio' ? 'secondary' : 'ghost'}
+                  className="w-full justify-start px-4"
+                  onClick={() => setSelectedFolder('audio')}
+                >
+                  <FileAudio className="mr-2 h-4 w-4" />
+                  Audio
+                </Button>
+                <Button
+                  variant={selectedFolder === 'spreadsheets' ? 'secondary' : 'ghost'}
+                  className="w-full justify-start px-4"
+                  onClick={() => setSelectedFolder('spreadsheets')}
+                >
+                  <FileSpreadsheet className="mr-2 h-4 w-4" />
+                  Spreadsheets
+                </Button>
+              </div>
+            </CardContent>
+            <CardFooter className="p-4 pt-0">
+              <Button variant="outline" className="w-full" onClick={() => setShowUploadDialog(true)}>
+                <Plus className="mr-2 h-4 w-4" />
+                Upload File
+              </Button>
+            </CardFooter>
+          </Card>
+        </motion.div>
 
-        <Separator className="mb-4" />
-
-        {isLoading ? (
-          <div className="flex items-center justify-center min-h-[60vh]">
-            <div className="animate-pulse">Loading assets...</div>
-          </div>
-        ) : assets.length === 0 ? (
-          <div className="flex items-center justify-center min-h-[60vh]">
-            <div className="text-gray-500">No assets found.</div>
-          </div>
-        ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead>Category</TableHead>
-                <TableHead>Size</TableHead>
-                <TableHead>Last Accessed</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {assets.map((asset) => (
-                <TableRow key={asset.id}>
-                  <TableCell className="font-medium">
-                    <div className="flex items-center">
-                      {asset.is_encrypted ? <Lock className="h-4 w-4 mr-2 text-green-500" /> : null}
-                      {asset.name}
-                    </div>
-                  </TableCell>
-                  <TableCell>{asset.type}</TableCell>
-                  <TableCell>{asset.category || 'Uncategorized'}</TableCell>
-                  <TableCell>{asset.size}</TableCell>
-                  <TableCell>
-                    {asset.last_accessed 
-                      ? format(new Date(asset.last_accessed), 'MMM dd, yyyy') 
-                      : 'Never'}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" className="h-8 w-8 p-0">
-                          <span className="sr-only">Open menu</span>
-                          <MoreVertical className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => handleEditDialogOpen(asset)}>
-                          <FileEdit className="mr-2 h-4 w-4" />
-                          Edit
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleDeleteDialogOpen(asset)}>
-                          <FileX className="mr-2 h-4 w-4" />
-                          Delete
-                        </DropdownMenuItem>
-                        <DropdownMenuItem>
-                          <Download className="mr-2 h-4 w-4" />
-                          Download
-                        </DropdownMenuItem>
-                        <DropdownMenuItem>
-                          <Eye className="mr-2 h-4 w-4" />
-                          View Details
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        )}
+        <motion.div 
+          className="md:col-span-3"
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.3, delay: 0.2 }}
+        >
+          <Card>
+            <CardHeader className="pb-3">
+              <div className="flex justify-between items-center mb-2">
+                <CardTitle>Your Digital Assets</CardTitle>
+                <div className="flex items-center space-x-2">
+                  <Button variant="outline" size="icon">
+                    <Filter className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" />
+                <Input 
+                  placeholder="Search files and folders..." 
+                  className="pl-10"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+              </div>
+            </CardHeader>
+            <CardContent>
+              {filteredAssets && filteredAssets.length > 0 ? (
+                <div className="rounded-md border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Name</TableHead>
+                        <TableHead>Type</TableHead>
+                        <TableHead>Size</TableHead>
+                        <TableHead>Date Added</TableHead>
+                        <TableHead className="w-[80px]"></TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredAssets.map((asset) => (
+                        <TableRow key={asset.id}>
+                          <TableCell className="font-medium flex items-center">
+                            <div className="mr-2">
+                              {getFileIcon(asset)}
+                            </div>
+                            <span className="truncate max-w-[200px]">{asset.name}</span>
+                          </TableCell>
+                          <TableCell>
+                            {asset.type.toUpperCase()}
+                          </TableCell>
+                          <TableCell>{asset.size}</TableCell>
+                          <TableCell>
+                            {format(new Date(asset.created_at), 'MMM d, yyyy')}
+                          </TableCell>
+                          <TableCell>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon">
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                <DropdownMenuItem 
+                                  onClick={() => downloadAsset(asset)}
+                                  className="cursor-pointer"
+                                >
+                                  <Download className="mr-2 h-4 w-4" />
+                                  Download
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem 
+                                  onClick={() => deleteAssetMutation.mutate(asset)}
+                                  className="text-destructive cursor-pointer"
+                                >
+                                  <Trash2 className="mr-2 h-4 w-4" />
+                                  Delete
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              ) : (
+                <div className="text-center py-10">
+                  <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-muted mb-4">
+                    <Folder className="h-8 w-8 text-muted-foreground" />
+                  </div>
+                  <h3 className="text-lg font-medium mb-2">No files found</h3>
+                  <p className="text-muted-foreground mb-4">
+                    {searchQuery 
+                      ? "No files match your search criteria" 
+                      : "Upload your first file to get started"}
+                  </p>
+                  <Button onClick={() => setShowUploadDialog(true)}>
+                    <Plus className="mr-2 h-4 w-4" />
+                    Upload File
+                  </Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </motion.div>
       </div>
 
-      {/* Create Asset Dialog */}
-      <Dialog open={isCreateDialogOpen} onOpenChange={handleCreateDialogClose}>
-        <DialogContent className="sm:max-w-[500px]">
-          <DialogHeader>
-            <DialogTitle>Create Digital Asset</DialogTitle>
-            <DialogDescription>
-              Add a new digital asset to your vault.
-            </DialogDescription>
-          </DialogHeader>
-          <Form {...createForm}>
-            <form onSubmit={createForm.handleSubmit(onCreateSubmit)} className="space-y-4">
-              <FormField
-                control={createForm.control}
-                name="name"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Name</FormLabel>
-                    <FormControl>
-                      <Input {...field} placeholder="Asset name" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              <FormField
-                control={createForm.control}
-                name="description"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Description</FormLabel>
-                    <FormControl>
-                      <Textarea {...field} placeholder="Asset description" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              <div className="grid grid-cols-2 gap-4">
-                <FormField
-                  control={createForm.control}
-                  name="type"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Type</FormLabel>
-                      <FormControl>
-                        <Input {...field} placeholder="File type" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
-                <FormField
-                  control={createForm.control}
-                  name="size"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Size</FormLabel>
-                      <FormControl>
-                        <Input {...field} placeholder="File size" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+      <motion.div 
+        className="mt-8"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3, delay: 0.3 }}
+      >
+        <Card>
+          <CardHeader>
+            <CardTitle>Storage Security</CardTitle>
+            <CardDescription>
+              Information about how your digital assets are protected
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="flex flex-col items-center text-center p-4">
+                <div className="bg-primary/10 p-4 rounded-full mb-4">
+                  <Lock className="h-8 w-8 text-primary" />
+                </div>
+                <h3 className="font-medium mb-2">End-to-End Encryption</h3>
+                <p className="text-sm text-muted-foreground">
+                  Your files are encrypted during transit and at rest, ensuring 
+                  maximum protection of your sensitive information.
+                </p>
               </div>
               
-              <FormField
-                control={createForm.control}
-                name="category"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Category</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select a category" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="documents">Documents</SelectItem>
-                        <SelectItem value="images">Images</SelectItem>
-                        <SelectItem value="videos">Videos</SelectItem>
-                        <SelectItem value="other">Other</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              <FormField
-                control={createForm.control}
-                name="is_encrypted"
-                render={({ field }) => (
-                  <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
-                    <FormControl>
-                      <input
-                        type="checkbox"
-                        checked={field.value}
-                        onChange={field.onChange}
-                        className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
-                      />
-                    </FormControl>
-                    <div className="space-y-1 leading-none">
-                      <FormLabel>Encrypt asset</FormLabel>
-                      <FormDescription>
-                        Enable encryption for this digital asset
-                      </FormDescription>
-                    </div>
-                  </FormItem>
-                )}
-              />
-              
-              <DialogFooter>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={handleCreateDialogClose}
-                >
-                  Cancel
-                </Button>
-                <Button type="submit" disabled={createAssetMutation.isPending}>
-                  {createAssetMutation.isPending ? "Creating..." : "Create Asset"}
-                </Button>
-              </DialogFooter>
-            </form>
-          </Form>
-        </DialogContent>
-      </Dialog>
-
-      {/* Edit Asset Dialog */}
-      <Dialog open={isEditDialogOpen} onOpenChange={handleEditDialogClose}>
-        <DialogContent className="sm:max-w-[500px]">
-          <DialogHeader>
-            <DialogTitle>Edit Digital Asset</DialogTitle>
-            <DialogDescription>
-              Make changes to the selected digital asset.
-            </DialogDescription>
-          </DialogHeader>
-          <Form {...editForm}>
-            <form onSubmit={editForm.handleSubmit(onEditSubmit)} className="space-y-4">
-              <FormField
-                control={editForm.control}
-                name="name"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Name</FormLabel>
-                    <FormControl>
-                      <Input {...field} placeholder="Asset name" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              <FormField
-                control={editForm.control}
-                name="description"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Description</FormLabel>
-                    <FormControl>
-                      <Textarea {...field} placeholder="Asset description" value={field.value || ''} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              <div className="grid grid-cols-2 gap-4">
-                <FormField
-                  control={editForm.control}
-                  name="type"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Type</FormLabel>
-                      <FormControl>
-                        <Input {...field} placeholder="File type" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
-                <FormField
-                  control={editForm.control}
-                  name="size"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Size</FormLabel>
-                      <FormControl>
-                        <Input {...field} placeholder="File size" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+              <div className="flex flex-col items-center text-center p-4">
+                <div className="bg-primary/10 p-4 rounded-full mb-4">
+                  <FileLock2 className="h-8 w-8 text-primary" />
+                </div>
+                <h3 className="font-medium mb-2">Access Control</h3>
+                <p className="text-sm text-muted-foreground">
+                  Define who can access your digital assets and under what conditions
+                  with our comprehensive permission system.
+                </p>
               </div>
               
-              <FormField
-                control={editForm.control}
-                name="category"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Category</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select a category" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="documents">Documents</SelectItem>
-                        <SelectItem value="images">Images</SelectItem>
-                        <SelectItem value="videos">Videos</SelectItem>
-                        <SelectItem value="other">Other</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              <FormField
-                control={editForm.control}
-                name="is_encrypted"
-                render={({ field }) => (
-                  <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
-                    <FormControl>
-                      <input
-                        type="checkbox"
-                        checked={field.value}
-                        onChange={field.onChange}
-                        className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
-                      />
-                    </FormControl>
-                    <div className="space-y-1 leading-none">
-                      <FormLabel>Encrypt asset</FormLabel>
-                      <FormDescription>
-                        Enable encryption for this digital asset
-                      </FormDescription>
-                    </div>
-                  </FormItem>
-                )}
-              />
-              
-              <DialogFooter>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={handleEditDialogClose}
-                >
-                  Cancel
-                </Button>
-                <Button type="submit" disabled={updateAssetMutation.isPending}>
-                  {updateAssetMutation.isPending ? "Saving..." : "Save Changes"}
-                </Button>
-              </DialogFooter>
-            </form>
-          </Form>
-        </DialogContent>
-      </Dialog>
-
-      {/* Delete Asset Dialog */}
-      <Dialog open={isDeleteDialogOpen} onOpenChange={handleDeleteDialogClose}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>Delete Digital Asset</DialogTitle>
-            <DialogDescription>
-              Are you sure you want to delete this asset? This action cannot be undone.
-            </DialogDescription>
-          </DialogHeader>
-          <div>
-            {selectedAsset && (
-              <div className="py-4">
-                <p><strong>Name:</strong> {selectedAsset.name}</p>
-                <p><strong>Type:</strong> {selectedAsset.type}</p>
-                <p><strong>Category:</strong> {selectedAsset.category || 'Uncategorized'}</p>
+              <div className="flex flex-col items-center text-center p-4">
+                <div className="bg-primary/10 p-4 rounded-full mb-4">
+                  <FileUp className="h-8 w-8 text-primary" />
+                </div>
+                <h3 className="font-medium mb-2">Secure Storage</h3>
+                <p className="text-sm text-muted-foreground">
+                  All files are stored in our secure vault with regular backups
+                  and protection against unauthorized access.
+                </p>
               </div>
-            )}
-          </div>
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handleDeleteDialogClose}
-            >
-              Cancel
-            </Button>
-            <Button 
-              type="button" 
-              variant="destructive"
-              onClick={() => deleteAssetMutation.mutate()}
-              disabled={deleteAssetMutation.isPending}
-            >
-              {deleteAssetMutation.isPending ? "Deleting..." : "Delete Asset"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+            </div>
+          </CardContent>
+        </Card>
+      </motion.div>
     </div>
   );
-}
+};
+
+export default DigitalAssetVaultPage;
