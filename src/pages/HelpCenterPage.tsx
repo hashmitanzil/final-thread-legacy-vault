@@ -1,29 +1,35 @@
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   FileText, 
   Mail, 
   BookOpen, 
-  User, 
-  MessageSquare, 
-  Users, 
-  Clock, 
-  Shield, 
   Search,
   ChevronRight,
   ArrowRight,
   HelpCircle,
-  BookOpen as BookIcon,
   ExternalLink,
-  CheckCircle
+  Clock,
+  Shield,
+  User,
+  MessageSquare,
+  Users
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
+import { 
+  Card, 
+  CardContent, 
+  CardDescription, 
+  CardFooter, 
+  CardHeader, 
+  CardTitle 
+} from "@/components/ui/card";
 import { useNavigate } from 'react-router-dom';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 // Documentation content data structure
 const documentationContent = [
@@ -256,10 +262,10 @@ const ArticleContent = ({ html }: { html: string }) => {
 
 // Help Center Page Component
 const HelpCenterPage: React.FC = () => {
-  const [activeCategory, setActiveCategory] = useState('getting-started');
-  const [activeArticle, setActiveArticle] = useState('welcome');
   const [searchQuery, setSearchQuery] = useState('');
-  const articleRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
+  const [selectedCategory, setSelectedCategory] = useState('getting-started');
+  const [selectedArticle, setSelectedArticle] = useState('welcome');
+  const articleContentRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
   
   // Filter articles based on search query
@@ -276,40 +282,14 @@ const HelpCenterPage: React.FC = () => {
   // Get current article content
   const currentArticle = documentationContent
     .flatMap(category => category.articles)
-    .find(article => article.id === activeArticle);
+    .find(article => article.id === selectedArticle);
 
-  // Scroll to article when clicking sidebar link
-  const scrollToArticle = (articleId: string) => {
-    setActiveArticle(articleId);
-    const articleElement = articleRefs.current[articleId];
-    if (articleElement) {
-      articleElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  // Scroll to top of article content when new article is selected
+  useEffect(() => {
+    if (articleContentRef.current) {
+      articleContentRef.current.scrollTo({ top: 0, behavior: 'smooth' });
     }
-  };
-
-  // Animation variants for page elements
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: { 
-      opacity: 1,
-      transition: { 
-        staggerChildren: 0.1,
-        delayChildren: 0.2
-      }
-    }
-  };
-  
-  const itemVariants = {
-    hidden: { y: 20, opacity: 0 },
-    visible: { 
-      y: 0, 
-      opacity: 1,
-      transition: { 
-        type: "spring", 
-        stiffness: 100 
-      }
-    }
-  };
+  }, [selectedArticle]);
 
   // Effect to highlight search terms
   useEffect(() => {
@@ -326,201 +306,257 @@ const HelpCenterPage: React.FC = () => {
     }
   }, [searchQuery, currentArticle]);
 
+  // Animation variants
+  const fadeIn = {
+    hidden: { opacity: 0 },
+    visible: { opacity: 1, transition: { duration: 0.5 } }
+  };
+
   return (
-    <motion.div 
-      initial="hidden"
-      animate="visible"
-      variants={containerVariants}
-      className="container mx-auto px-4 py-12"
-    >
-      <motion.div variants={itemVariants} className="flex flex-col md:flex-row justify-between mb-8 gap-4">
-        <div>
-          <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-purple-600 to-blue-600">Help Center</h1>
-          <p className="text-muted-foreground mt-2">
-            Find answers to frequently asked questions and learn how to use Final Thread.
+    <div className="container mx-auto px-4 py-6 md:py-10">
+      {/* Header Section */}
+      <motion.header 
+        className="mb-10"
+        initial="hidden"
+        animate="visible"
+        variants={fadeIn}
+      >
+        <div className="text-center mb-6">
+          <h1 className="text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-purple-600 to-blue-600 mb-3">
+            Help Center
+          </h1>
+          <p className="text-muted-foreground max-w-2xl mx-auto">
+            Find answers to frequently asked questions and learn how to use Final Thread to secure your digital legacy.
           </p>
         </div>
-        <div className="flex space-x-4 mt-4 md:mt-0">
-          <Button 
-            variant="outline" 
-            onClick={() => window.open('/documentation.pdf', '_blank')}
-            className="flex items-center gap-2 hover-lift"
-          >
-            <FileText className="h-4 w-4" />
-            View Documentation
-          </Button>
-          <Button 
-            variant="default"
-            onClick={() => navigate('/contact')}
-            className="flex items-center gap-2 hover-lift bg-gradient-to-r from-purple-600 to-blue-600"
-          >
-            <Mail className="h-4 w-4" />
-            Contact Support
-          </Button>
+
+        {/* Search */}
+        <div className="relative max-w-2xl mx-auto">
+          <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-muted-foreground" />
+          <Input
+            placeholder="Search for help articles..."
+            className="pl-12 py-6 text-lg rounded-xl shadow-sm hover:shadow-md transition-shadow"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+          {searchQuery && (
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="absolute right-2 top-1/2 transform -translate-y-1/2"
+              onClick={() => setSearchQuery('')}
+            >
+              <svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M11.7816 4.03157C12.0062 3.80702 12.0062 3.44295 11.7816 3.2184C11.5571 2.99385 11.193 2.99385 10.9685 3.2184L7.50005 6.68682L4.03157 3.2184C3.80702 2.99385 3.44295 2.99385 3.2184 3.2184C2.99385 3.44295 2.99385 3.80702 3.2184 4.03157L6.68682 7.50005L3.2184 10.9685C2.99385 11.193 2.99385 11.5571 3.2184 11.7816C3.44295 12.0062 3.80702 12.0062 4.03157 11.7816L7.50005 8.31322L10.9685 11.7816C11.193 12.0062 11.5571 12.0062 11.7816 11.7816C12.0062 11.5571 12.0062 11.193 11.7816 10.9685L8.31322 7.50005L11.7816 4.03157Z" fill="currentColor" fillRule="evenodd" clipRule="evenodd"></path>
+              </svg>
+            </Button>
+          )}
         </div>
-      </motion.div>
+      </motion.header>
 
-      <motion.div variants={itemVariants} className="relative mb-8">
-        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-        <Input
-          placeholder="Search for help articles..."
-          className="pl-10 py-6 text-lg rounded-xl shadow-md hover:shadow-lg transition-shadow duration-300"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-        />
-      </motion.div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-        <motion.div variants={itemVariants} className="lg:col-span-1">
-          <Tabs defaultValue={activeCategory} value={activeCategory} onValueChange={setActiveCategory}>
-            <TabsList className="flex flex-wrap justify-start mb-4 border-none">
-              {documentationContent.map((category) => (
-                <TabsTrigger 
-                  key={category.id} 
-                  value={category.id}
-                  className="flex items-center gap-2 data-[state=active]:bg-purple-100 data-[state=active]:text-purple-700 dark:data-[state=active]:bg-purple-900 dark:data-[state=active]:text-purple-200 rounded-lg transition-all duration-300"
-                >
-                  {category.icon}
-                  <span className="truncate max-w-[100px]">{category.category}</span>
-                </TabsTrigger>
-              ))}
-            </TabsList>
-
-            <AnimatePresence mode="wait">
-              {filteredCategories.map((category) => (
-                <TabsContent key={category.id} value={category.id} className="mt-0 relative">
-                  <motion.div 
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: 20 }}
-                    transition={{ duration: 0.3 }}
-                    className="border rounded-lg overflow-hidden shadow-md hover:shadow-lg transition-shadow duration-300"
-                  >
-                    <h3 className="font-medium px-4 py-3 bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 text-lg flex items-center">
-                      {category.icon}
-                      <span className="ml-2">{category.category}</span>
-                    </h3>
-                    <ul className="max-h-[60vh] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
-                      {category.articles.map((article) => (
-                        <li key={article.id}>
-                          <button
-                            onClick={() => scrollToArticle(article.id)}
-                            className={`w-full text-left px-4 py-3 flex items-center hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-colors duration-300 ${
-                              activeArticle === article.id ? 'bg-primary/10 text-primary font-medium' : ''
-                            }`}
-                          >
-                            <span className="flex-1 truncate">{article.title}</span>
-                            <ChevronRight className={`h-4 w-4 transition-transform duration-300 ${activeArticle === article.id ? 'rotate-90 text-primary' : 'opacity-50'}`} />
-                          </button>
-                          <Separator />
-                        </li>
-                      ))}
-                    </ul>
-                  </motion.div>
-                </TabsContent>
-              ))}
-            </AnimatePresence>
-          </Tabs>
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-8">
+        {/* Categories List - Desktop */}
+        <motion.div 
+          className="hidden md:block md:col-span-3"
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.5 }}
+        >
+          <Card className="sticky top-4">
+            <CardHeader className="pb-3">
+              <CardTitle>Categories</CardTitle>
+              <CardDescription>Browse topics by category</CardDescription>
+            </CardHeader>
+            <CardContent className="px-0">
+              <ul className="space-y-1">
+                {filteredCategories.map((category) => (
+                  <li key={category.id}>
+                    <Button
+                      variant="ghost"
+                      className={`w-full justify-start px-6 py-3 text-left ${selectedCategory === category.id ? 'bg-primary/10 text-primary font-medium' : ''}`}
+                      onClick={() => {
+                        setSelectedCategory(category.id);
+                        if (category.articles.length > 0) {
+                          setSelectedArticle(category.articles[0].id);
+                        }
+                      }}
+                    >
+                      <span className="flex items-center">
+                        {category.icon}
+                        <span className="ml-2">{category.category}</span>
+                      </span>
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+            </CardContent>
+          </Card>
         </motion.div>
 
-        <motion.div variants={itemVariants} className="lg:col-span-3">
-          <div className="bg-card rounded-lg border shadow-sm p-6 hover:shadow-md transition-shadow duration-300">
-            {currentArticle ? (
-              <motion.div
-                key={currentArticle.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, type: "spring" }}
-                ref={(el) => (articleRefs.current[currentArticle.id] = el)}
-              >
-                <div className="flex items-center gap-2 mb-4">
-                  <Badge variant="outline" className="bg-purple-50 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">
-                    {documentationContent.find(cat => cat.articles.some(art => art.id === currentArticle.id))?.category}
-                  </Badge>
-                  <span className="text-muted-foreground text-sm">Article ID: {currentArticle.id}</span>
-                </div>
-                <ArticleContent html={currentArticle.content} />
-                
-                <div className="mt-8 border-t pt-4 flex justify-between items-center">
-                  <div className="text-sm text-muted-foreground">
-                    Last updated: April 14, 2025
-                  </div>
-                  <div className="flex gap-4">
-                    <Button variant="outline" size="sm" className="flex items-center gap-2">
-                      <HelpCircle className="h-4 w-4" />
-                      Was this helpful?
-                    </Button>
-                    <Button variant="ghost" size="sm" className="flex items-center gap-2">
-                      <ExternalLink className="h-4 w-4" />
-                      Share
-                    </Button>
-                  </div>
-                </div>
-              </motion.div>
-            ) : (
-              <div className="text-center py-12">
-                <motion.div
-                  initial={{ scale: 0.8, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  transition={{ duration: 0.3 }}
-                >
-                  <SearchIcon className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
-                  <h3 className="text-xl font-medium mb-2">No articles found</h3>
-                  <p className="text-muted-foreground">Try adjusting your search query</p>
-                </motion.div>
-              </div>
-            )}
+        {/* Categories Dropdown - Mobile */}
+        <motion.div 
+          className="md:hidden col-span-1"
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+        >
+          <div className="flex items-center gap-2 mb-4">
+            <select 
+              className="w-full p-2 border rounded-md"
+              value={selectedCategory}
+              onChange={(e) => {
+                const newCategory = e.target.value;
+                setSelectedCategory(newCategory);
+                const categoryArticles = documentationContent.find(cat => cat.id === newCategory)?.articles || [];
+                if (categoryArticles.length > 0) {
+                  setSelectedArticle(categoryArticles[0].id);
+                }
+              }}
+            >
+              {documentationContent.map(category => (
+                <option key={category.id} value={category.id}>
+                  {category.category}
+                </option>
+              ))}
+            </select>
           </div>
+        </motion.div>
+
+        {/* Article List */}
+        <motion.div 
+          className="md:col-span-3 lg:col-span-2"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.1 }}
+        >
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle>Articles</CardTitle>
+              <CardDescription>
+                {documentationContent.find(cat => cat.id === selectedCategory)?.category || 'Browse all articles'}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="h-[calc(100vh-18rem)] p-0">
+              <ScrollArea className="h-full pr-4">
+                <ul className="space-y-1 px-6 pb-6">
+                  {filteredCategories
+                    .find(cat => cat.id === selectedCategory)
+                    ?.articles.map((article) => (
+                      <li key={article.id}>
+                        <Button
+                          variant="ghost"
+                          className={`w-full justify-start text-left ${selectedArticle === article.id ? 'bg-primary/10 text-primary font-medium' : ''}`}
+                          onClick={() => setSelectedArticle(article.id)}
+                        >
+                          <div className="flex items-start">
+                            <ChevronRight className={`h-4 w-4 mt-1 mr-2 transition-transform ${selectedArticle === article.id ? 'rotate-90 text-primary' : ''}`} />
+                            <span>{article.title}</span>
+                          </div>
+                        </Button>
+                      </li>
+                    ))}
+                  {filteredCategories.find(cat => cat.id === selectedCategory)?.articles.length === 0 && (
+                    <li className="px-3 py-2 text-muted-foreground italic">No articles found</li>
+                  )}
+                </ul>
+              </ScrollArea>
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        {/* Article Content */}
+        <motion.div 
+          className="md:col-span-6 lg:col-span-7"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.2 }}
+        >
+          <Card className="h-full">
+            <CardContent className="h-[calc(100vh-10rem)] p-6" ref={articleContentRef}>
+              <ScrollArea className="h-full pr-4">
+                <AnimatePresence mode="wait">
+                  {currentArticle ? (
+                    <motion.div
+                      key={currentArticle.id}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.3 }}
+                    >
+                      <div className="flex items-center gap-2 mb-4">
+                        <Badge variant="outline" className="bg-purple-50 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">
+                          {documentationContent.find(cat => cat.articles.some(art => art.id === currentArticle.id))?.category}
+                        </Badge>
+                        <span className="text-muted-foreground text-sm">Updated: April 14, 2025</span>
+                      </div>
+                      <ArticleContent html={currentArticle.content} />
+                      
+                      <div className="mt-8 border-t pt-4 flex flex-wrap justify-between items-center gap-4">
+                        <div className="text-sm text-muted-foreground">
+                          Was this article helpful?
+                        </div>
+                        <div className="flex gap-2">
+                          <Button variant="outline" size="sm" className="flex items-center gap-2">
+                            <HelpCircle className="h-4 w-4" />
+                            Yes
+                          </Button>
+                          <Button variant="outline" size="sm" className="flex items-center gap-2">
+                            <ExternalLink className="h-4 w-4" />
+                            No
+                          </Button>
+                        </div>
+                      </div>
+                    </motion.div>
+                  ) : (
+                    <div className="text-center py-12">
+                      <motion.div
+                        initial={{ scale: 0.8, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        transition={{ duration: 0.3 }}
+                      >
+                        <Search className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
+                        <h3 className="text-xl font-medium mb-2">No articles found</h3>
+                        <p className="text-muted-foreground">Try adjusting your search query</p>
+                      </motion.div>
+                    </div>
+                  )}
+                </AnimatePresence>
+              </ScrollArea>
+            </CardContent>
+          </Card>
         </motion.div>
       </div>
 
+      {/* Contact Support Section */}
       <motion.div 
-        variants={itemVariants} 
-        className="mt-12 bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 rounded-lg p-8 text-center shadow-md"
+        className="mt-12 rounded-xl overflow-hidden shadow-lg"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, delay: 0.3 }}
       >
-        <h2 className="text-2xl font-bold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-purple-600 to-blue-600">Still need help?</h2>
-        <p className="mb-6 max-w-2xl mx-auto">
-          Our support team is available to assist you with any questions or issues not covered in our documentation.
-        </p>
-        <div className="flex flex-col sm:flex-row gap-4 justify-center">
-          <Button onClick={() => navigate('/contact')} className="flex items-center gap-2 px-6 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 hover-lift">
-            <Mail className="h-4 w-4" />
-            Contact Support
-          </Button>
-          <Button variant="outline" className="flex items-center gap-2 px-6 hover-lift">
-            <Clock className="h-4 w-4" />
-            View FAQ
-          </Button>
-          <Button variant="secondary" className="flex items-center gap-2 px-6 hover-lift">
-            <Shield className="h-4 w-4" />
-            Privacy & Security
-          </Button>
+        <div className="bg-gradient-to-r from-purple-500 to-blue-500 p-8 text-center text-white">
+          <h2 className="text-2xl font-bold mb-4">Still need help?</h2>
+          <p className="mb-6 max-w-2xl mx-auto">
+            Our support team is available to assist you with any questions or issues not covered in our documentation.
+          </p>
+          <div className="flex flex-wrap justify-center gap-4">
+            <Button onClick={() => navigate('/contact')} className="bg-white text-purple-600 hover:bg-gray-100 flex items-center gap-2 px-6">
+              <Mail className="h-4 w-4" />
+              Contact Support
+            </Button>
+            <Button variant="outline" className="border-white text-white hover:bg-white/10 flex items-center gap-2 px-6">
+              <Clock className="h-4 w-4" />
+              View FAQ
+            </Button>
+            <Button variant="outline" className="border-white text-white hover:bg-white/10 flex items-center gap-2 px-6">
+              <Shield className="h-4 w-4" />
+              Privacy & Security
+            </Button>
+          </div>
         </div>
       </motion.div>
-    </motion.div>
+    </div>
   );
 };
-
-// Custom search icon with animation
-const SearchIcon = ({ className }: { className?: string }) => (
-  <motion.svg
-    xmlns="http://www.w3.org/2000/svg"
-    width="24"
-    height="24"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    className={className}
-    initial={{ pathLength: 0 }}
-    animate={{ pathLength: 1 }}
-    transition={{ duration: 1, ease: "easeInOut" }}
-  >
-    <circle cx="11" cy="11" r="8" />
-    <line x1="21" y1="21" x2="16.65" y2="16.65" />
-  </motion.svg>
-);
 
 export default HelpCenterPage;
